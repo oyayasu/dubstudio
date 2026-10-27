@@ -16,7 +16,7 @@ from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.3.0'
+BUILD_VERSION = '1.3.1'
 
 
 I18N = {
@@ -464,6 +464,9 @@ def icon(kind, color='#687080'):
         p.drawArc(QRectF(9, 7, 7, 7), 10 * 16, 185 * 16)
         p.drawLine(12, 14, 12, 15)
         p.drawPoint(12, 18)
+    elif kind == 'plus':
+        p.drawLine(12, 5, 12, 19)
+        p.drawLine(5, 12, 19, 12)
     elif kind == 'sun':
         p.drawEllipse(QRectF(8, 8, 8, 8))
         for a, b, c, d in [(12,2,12,4),(12,20,12,22),(2,12,4,12),(20,12,22,12),
@@ -1283,6 +1286,9 @@ class Window(QMainWindow):
         self.empty = QPushButton(self.tr('import_video'))
         self.empty.setObjectName('emptyState')
         self.empty.setCursor(Qt.PointingHandCursor)
+        # Vector icon avoids missing-glyph rectangles on systems without a fullwidth-plus font.
+        self.empty.setIcon(icon('plus', '#e93f7f'))
+        self.empty.setIconSize(QSize(21, 21))
         self.empty.clicked.connect(self.import_video)
         viewer_stack.addWidget(self.empty)
         viewer_stack.setCurrentWidget(self.empty)
@@ -1484,7 +1490,7 @@ class Window(QMainWindow):
         self.close_project_btn.setToolTip(self.tr('close_project') + ' · ' + self.shortcut_text('close'))
         self.close_project_btn.setAccessibleName(self.tr('close_project'))
         self.import_btn.setText(self.tr('import_video'))
-        self.empty.setText(('＋  ' + self.tr('import_video') + '\nMP4 · MOV · MKV · WEBM'))
+        self.empty.setText(self.tr('import_video') + '\nMP4 · MOV · MKV · WEBM')
         self.video_header.setText({'pt': 'VÍDEO ORIGINAL', 'en': 'SOURCE VIDEO', 'ja': '元の動画'}.get(self.ui_language, 'VÍDEO ORIGINAL'))
         self.original_heading.setText({'pt': 'FAIXA ORIGINAL  ·  Arraste as agulhas numeradas para ajustar os trechos', 'en': 'SOURCE TRACK  ·  Drag numbered markers to adjust segments', 'ja': '元の音声  ·  数字付きのマーカーをドラッグして調整'}.get(self.ui_language, 'FAIXA ORIGINAL'))
         self.dub_heading.setText({'pt': 'SUA GRAVAÇÃO', 'en': 'YOUR RECORDING', 'ja': '録音'}.get(self.ui_language, 'SUA GRAVAÇÃO'))

@@ -2,8 +2,8 @@ from __future__ import annotations
 import os, shutil, sys, uuid, math, json
 from pathlib import Path
 import ctypes
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QUrl, QSize, QRectF, QSettings, QEvent, QPoint
-from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QIcon, QPixmap, QAction,
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QUrl, QSize, QRectF, QSettings, QEvent
+from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QIcon, QPixmap,
                            QKeySequence, QPainterPath, QRegion)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QFileDialog, QLabel, QLineEdit, QPlainTextEdit, QTextEdit, QScrollArea, QSlider,
@@ -16,7 +16,7 @@ from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.3.2'
+BUILD_VERSION = '1.3.3'
 
 
 I18N = {
@@ -785,6 +785,13 @@ class Timeline(QWidget):
 
         visible = self.visible_indices()
         if visible:
+            # Linear-time labels: avoid scanning all preceding chapters per marker.
+            seen_by_part = {}
+            chapter_numbers = {}
+            for marker_idx, marker in enumerate(self.project.segments):
+                n = seen_by_part.get(marker.part_id, 0) + 1
+                seen_by_part[marker.part_id] = n
+                chapter_numbers[marker_idx] = n
             active_idx = self.active if self.active in visible else visible[0]
             s = self.project.segments[active_idx]
             a, b = self.x(s.start), self.x(s.end)
@@ -806,12 +813,12 @@ class Timeline(QWidget):
                         p.setBrush(QColor('#9376ea')); p.setPen(Qt.NoPen)
                         p.drawEllipse(QRectF(xx - 11, 5, 22, 22))
                         p.setPen(QColor('#ffffff')); p.setFont(QFont('Segoe UI', 9))
-                        p.drawText(QRectF(xx - 11, 5, 22, 22), Qt.AlignCenter, str(self.chapter_number(i)))
+                        p.drawText(QRectF(xx - 11, 5, 22, 22), Qt.AlignCenter, str(chapter_numbers[i]))
                     else:
                         p.setBrush(QColor('#323640' if self.dark else '#eef0f5')); p.setPen(Qt.NoPen)
                         p.drawEllipse(QRectF(xx - 8, 8, 16, 16))
                         p.setPen(QColor('#9299a6' if self.dark else '#7a808d')); p.setFont(QFont('Segoe UI', 7))
-                        p.drawText(QRectF(xx - 8, 8, 16, 16), Qt.AlignCenter, str(self.chapter_number(i)))
+                        p.drawText(QRectF(xx - 8, 8, 16, 16), Qt.AlignCenter, str(chapter_numbers[i]))
 
             if not self.dub and self.active in visible:
                 s = self.project.segments[self.active]

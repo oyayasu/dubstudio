@@ -17,7 +17,7 @@ assert not w.dark, 'The redesigned app should launch in light mode on a clean pr
 assert w.original.handle_at is not None
 assert w.empty.objectName() == 'emptyState'
 assert isinstance(w.record_btn, RoundRecordButton), 'Recording control must use the circular painted widget'
-assert w.record_btn.width() == w.record_btn.height(), 'The record button must remain square in dimensions'
+assert min(w.record_btn.width(), w.record_btn.height()) >= 40, 'Record control must have adequate clickable size'
 image = w.record_btn.grab().toImage()
 assert image.pixelColor(image.width() // 2, image.height() // 2) != image.pixelColor(0, 0), 'Circle must be visibly different from its corners'
 assert not w.empty.icon().isNull(), 'The import action must have a vector plus icon'

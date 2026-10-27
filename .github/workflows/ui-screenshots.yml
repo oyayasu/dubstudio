@@ -1,0 +1,40 @@
+name: DubStudio UI Screenshots
+
+on:
+  push:
+    paths:
+      - 'scripts/capture_ui.py'
+      - '.github/workflows/ui-screenshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Qt and screenshot dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libxcb-cursor0 libgl1
+          python -m pip install -r requirements.txt pillow
+      - name: Render actual UI using Xvfb
+        run: xvfb-run -a -s '-screen 0 1600x950x24' python scripts/capture_ui.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DubStudio-UI-Preview
+          path: previews/*.png
+          if-no-files-found: error
+      - name: Publish screenshots to preview branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B ui-previews
+          git add previews/*.png
+          git commit -m "Render actual DubStudio v1.2 desktop UI"
+          git push --force origin HEAD:ui-previews

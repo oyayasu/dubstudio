@@ -1654,9 +1654,9 @@ class Window(QMainWindow):
         QPushButton:disabled {{ color: {hint}; background-color: {raised}; border-color: {border}; }}
         QPushButton#primaryButton {{ color: #ffffff; background: {pink}; border: 1px solid {pink}; font-weight: 700; }}
         QPushButton#primaryButton:hover {{ background: {accent}; }}
-        QPushButton#record {{ background: {pink}; color: #ffffff; border: 0px; border-radius: 29px; }}
-        QPushButton#record:hover {{ background: {accent}; }}
-        QPushButton#record:disabled {{ background: {muted}; }}
+        QPushButton#record {{ background: transparent; color: #ffffff; border: 0px; padding: 0px; min-height: 0px; }}
+        QPushButton#record:hover {{ background: transparent; }}
+        QPushButton#record:disabled {{ background: transparent; }}
         QPushButton#emptyState {{ background: {raised}; border: 1.5px dashed {border}; border-radius: 20px;
             color: {muted}; font-size: 16px; font-weight: 650; }}
         QPushButton#emptyState:hover {{ color: {accent}; border-color: {accent}; background: {selection}; }}

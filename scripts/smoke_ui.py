@@ -6,8 +6,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QSettings
 from dubstudio.ui import Window, ModernDialog, RoundRecordButton
 
+# Never open a modal first-run tutorial during unattended CI testing.
+QSettings('DubStudio', 'DubStudio').setValue('onboarding/v2/completed', True)
 app = QApplication([])
 app.setApplicationName('DubStudio')
 w = Window()

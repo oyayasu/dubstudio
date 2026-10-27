@@ -1,5 +1,9 @@
 """Smoke test Qt widget wiring without sound devices, video files or network access."""
 import os
+import sys
+from pathlib import Path
+# Running scripts/smoke_ui.py directly does not automatically put the project root on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from PySide6.QtWidgets import QApplication
 from dubstudio.ui import Window, ModernDialog

@@ -69,23 +69,6 @@ def new_root():
     return Path(tempfile.mkdtemp(prefix='DubStudio-'))
 
 
-def ranges_from_silences(duration, silences, min_voice=.16, padding=.08):
-    # Silence is a segmentation hint, never a linguistic boundary guarantee.
-    ranges, cursor = [], 0.
-    for a, b in sorted(silences):
-        a, b = max(cursor, a), min(duration, b)
-        if a - cursor >= min_voice:
-            ranges.append([max(0, cursor - padding), min(duration, a + padding)])
-        cursor = max(cursor, b)
-    if duration - cursor >= min_voice:
-        ranges.append([max(0, cursor - padding), duration])
-    for i in range(1, len(ranges)):
-        if ranges[i][0] < ranges[i - 1][1]:
-            mid = (ranges[i][0] + ranges[i - 1][1]) / 2
-            ranges[i][0] = ranges[i - 1][1] = mid
-    return ranges
-
-
 def prepare_video(path, language, silence=.55, threshold=-35):
     """Import media and extract its audio without deciding chapter structure.
 
@@ -395,11 +378,13 @@ def render_dub(project, target):
     # Write a block at a time: long videos do not allocate a full PCM track in RAM.
     total = round(project.duration * RATE)
     cursor = 0
+    # Reuse one silence block instead of allocating every second in long videos.
+    silence_block = np.zeros(RATE, dtype=np.float32)
 
     def zeros(out, n):
         while n > 0:
             size = min(n, RATE)
-            out.write(np.zeros(size, dtype=np.float32))
+            out.write(silence_block[:size])
             n -= size
 
     with sf.SoundFile(target, 'w', samplerate=RATE, channels=1, subtype='PCM_24') as out:

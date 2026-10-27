@@ -1528,13 +1528,15 @@ class Window(QMainWindow):
     def theme(self):
         """Quiet, native-feeling desktop palette: translucent controls and rounded panels."""
         if self.dark:
-            bg, fg, surface, border = '#171b24', '#f0f2f8', '#242b37', '#3a4252'
-            hover, muted, selection = '#323c4c', '#a8b4c7', '#394a69'
-            raised, hint, accent = '#202632', '#8491a7', '#9da8ff'
+            bg, fg, surface, border = '#171a25', '#f4f5fb', '#242a38', '#383f52'
+            hover, muted, selection = '#323b50', '#b2bed4', '#343e56'
+            raised, hint, accent = '#2b3142', '#9da9bf', '#e58bb4'
+            pink, sidebar, lavender = '#e56599', '#202633', '#343a53'
         else:
-            bg, fg, surface, border = '#f6f7fa', '#242938', '#ffffff', '#e1e5ee'
-            hover, muted, selection = '#edf1f9', '#7a859a', '#e8ecff'
-            raised, hint, accent = '#f0f3f9', '#74809a', '#6667d9'
+            bg, fg, surface, border = '#f4f6fb', '#222a3b', '#ffffff', '#e6e9f2'
+            hover, muted, selection = '#f7e9f0', '#69778f', '#fde8f0'
+            raised, hint, accent = '#f7f8fc', '#8793a7', '#e34e83'
+            pink, sidebar, lavender = '#e83d79', '#ffffff', '#f2edff'
         QApplication.instance().setStyleSheet(f"""
         QWidget {{ color: {fg}; font-family: 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', sans-serif; font-size: 13px; }}
         QMainWindow, QWidget#centralCanvas, QWidget#canvasBody, QScrollArea {{ background-color: {bg}; }}
@@ -1588,7 +1590,59 @@ class Window(QMainWindow):
         QToolTip {{ background: {surface}; color: {fg}; border: 1px solid {border}; border-radius: 8px; padding: 7px; }}
         QMenu {{ background: {surface}; border: 1px solid {border}; border-radius: 13px; padding: 8px; }}
         QMenu::item {{ padding: 9px 22px; border-radius: 7px; }}
-        QMenu::item:selected {{ background: {selection}; }}
+        QMenu::item:selected {{ background: {selection}; color: {accent}; }}
+        /* Visual refresh: selectors leave all handlers, workflows and keyboard routing untouched. */
+        QMainWindow, QWidget#centralCanvas {{ background: {bg}; }}
+        QWidget#workspaceCanvas {{ background: transparent; }}
+        QFrame#workspaceSidebar {{ background-color: {sidebar}; border: 1px solid {border}; border-radius: 24px; }}
+        QLabel#brandLogo {{ background-color: {pink}; color: white; font-size: 23px; font-weight: 700; border-radius: 11px; }}
+        QLabel#sidebarBrand {{ font-size: 19px; font-weight: 750; color: {fg}; }}
+        QLabel#sidebarEyebrow {{ font-size: 10px; color: {hint}; font-weight: 700; letter-spacing: 1px; }}
+        QFrame#sidebarProject {{ background-color: {raised}; border: 1px solid {border}; border-radius: 15px; }}
+        QLabel#sidebarProjectName {{ font-size: 13px; font-weight: 700; color: {fg}; background: transparent; }}
+        QLabel#sidebarProjectDetails {{ font-size: 11px; color: {muted}; background: transparent; }}
+        QFrame#sidebarHint {{ background-color: {lavender}; border: 1px solid {border}; border-radius: 16px; }}
+        QPushButton#sidebarNav {{ background: transparent; border: 1px solid transparent; color: {muted}; font-weight: 600;
+            font-size: 12px; border-radius: 11px; padding: 11px 10px; text-align: left; min-height: 20px; }}
+        QPushButton#sidebarNav:hover {{ background-color: {hover}; color: {fg}; }}
+        QPushButton#sidebarNav[selected='true'] {{ background-color: {selection}; color: {accent}; }}
+        QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
+        QLabel#brandTitle {{ font-weight: 750; font-size: 21px; color: {fg}; }}
+        QLabel#sectionHeading {{ color: {hint}; font-size: 11px; font-weight: 700; padding: 5px 0 2px 12px; }}
+        QLabel#modelInfo {{ color: {muted}; font-size: 11px; }}
+        QPushButton {{ background-color: {surface}; color: {fg}; border: 1px solid {border};
+            border-radius: 12px; padding: 10px 15px; min-height: 22px; }}
+        QPushButton:hover {{ background-color: {hover}; border-color: {accent}; }}
+        QPushButton:pressed {{ background-color: {selection}; }}
+        QPushButton:disabled {{ color: {hint}; background-color: {raised}; border-color: {border}; }}
+        QPushButton#primaryButton {{ color: #ffffff; background: {pink}; border: 1px solid {pink}; font-weight: 700; }}
+        QPushButton#primaryButton:hover {{ background: {accent}; }}
+        QPushButton#record {{ background: {pink}; color: #ffffff; border: 0px; border-radius: 29px; }}
+        QPushButton#record:hover {{ background: {accent}; }}
+        QPushButton#record:disabled {{ background: {muted}; }}
+        QPushButton#emptyState {{ background: {raised}; border: 1.5px dashed {border}; border-radius: 20px;
+            color: {muted}; font-size: 16px; font-weight: 650; }}
+        QPushButton#emptyState:hover {{ color: {accent}; border-color: {accent}; background: {selection}; }}
+        QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDoubleSpinBox, QKeySequenceEdit {{
+            background: {raised}; color: {fg}; border: 1px solid {border}; border-radius: 11px; padding: 10px 12px; }}
+        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QDoubleSpinBox:focus,
+        QKeySequenceEdit:focus {{ background: {surface}; border: 1px solid {accent}; }}
+        QGroupBox {{ border: 1px solid {border}; border-radius: 16px; margin-top: 17px;
+            padding: 18px 14px 12px 14px; background: {surface}; font-weight: 650; }}
+        QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 16px;
+            padding: 0 8px; background: {surface}; }}
+        QFrame#dialogSurface {{ background-color: {surface}; border: 1px solid {border}; border-radius: 24px; }}
+        QLabel#dialogTitle {{ font-size: 17px; font-weight: 750; }}
+        QLabel#trafficRed {{ background: #ff605c; border: 1px solid #ed4b49; border-radius: 5px; }}
+        QLabel#trafficYellow {{ background: #ffbd44; border: 1px solid #e9a82b; border-radius: 5px; }}
+        QLabel#trafficGreen {{ background: #00ca4e; border: 1px solid #00ad42; border-radius: 5px; }}
+        QPushButton#dialogClose {{ background: {raised}; color: {muted}; border: none; border-radius: 15px; }}
+        QPushButton#dialogClose:hover {{ background: {selection}; color: {fg}; }}
+        QFrame#videoBox {{ background: {surface}; border: 1px solid {border}; border-radius: 22px; }}
+        QSlider::groove:horizontal {{ height: 5px; background: {border}; border-radius: 3px; }}
+        QSlider::handle:horizontal {{ width: 16px; margin: -6px 0; background: {pink}; border-radius: 8px; }}
+        QMenu::item {{ padding: 9px 22px; border-radius: 9px; }}
+        QDialogButtonBox QPushButton {{ padding-left: 20px; padding-right: 20px; }}
         """)
         for button in self.findChildren(QPushButton):
             kind = button.property('icon_kind')

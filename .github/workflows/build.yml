@@ -39,15 +39,14 @@ jobs:
           architecture: x64
           cache: pip
       - run: python -m pip install -r requirements-build.txt pillow
+      - name: Smoke-test Qt UI (offscreen)
+        run: python scripts/smoke_ui.py
       - run: python scripts/build.py
-      - name: Verify Windows executable
+      - name: Verify Windows executable and bundled icon
         shell: pwsh
         run: |
-          if (-not (Test-Path "dist/DubStudio/DubStudio.exe")) {
-            throw "PyInstaller did not create dist/DubStudio/DubStudio.exe"
-          }
-      # upload-artifact creates a single ZIP automatically. Upload the directory,
-      # not another .zip, so extraction yields DubStudio/DubStudio.exe directly.
+          if (-not (Test-Path 'dist/DubStudio/DubStudio.exe')) { throw 'Executable missing' }
+          if (-not (Test-Path 'dist/DubStudio/_internal/assets/dubstudio.png')) { throw 'Icon resource missing' }
       - uses: actions/upload-artifact@v4
         with:
           name: DubStudio-Windows-x64
@@ -73,11 +72,13 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: python -m pip install -r requirements-build.txt pillow
+      - name: Smoke-test Qt UI (offscreen)
+        run: python scripts/smoke_ui.py
       - run: python scripts/build.py
       - name: Create macOS disk image
-        run: hdiutil create -volname DubStudio -srcfolder dist/DubStudio.app -ov -format UDZO 'DubStudio-1.1.0-macOS-${{ matrix.arch }}.dmg'
+        run: hdiutil create -volname DubStudio -srcfolder dist/DubStudio.app -ov -format UDZO 'DubStudio-1.2.0-macOS-${{ matrix.arch }}.dmg'
       - uses: actions/upload-artifact@v4
         with:
           name: DubStudio-macOS-${{ matrix.arch }}
-          path: DubStudio-1.1.0-macOS-${{ matrix.arch }}.dmg
+          path: DubStudio-1.2.0-macOS-${{ matrix.arch }}.dmg
           if-no-files-found: error

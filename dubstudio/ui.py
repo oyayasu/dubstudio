@@ -2,13 +2,13 @@ from __future__ import annotations
 import os, shutil, sys, uuid, math, json
 from pathlib import Path
 import ctypes
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QUrl, QSize, QRectF, QSettings, QEvent
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QUrl, QSize, QRectF, QSettings, QEvent, QPoint
 from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QIcon, QPixmap, QAction,
                            QKeySequence, QPainterPath, QRegion)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QFileDialog, QLabel, QLineEdit, QPlainTextEdit, QTextEdit, QScrollArea, QSlider,
     QDialog, QFormLayout, QComboBox, QDoubleSpinBox, QDialogButtonBox, QMessageBox,
-    QProgressDialog, QFrame, QSizePolicy, QStackedLayout, QMenu, QKeySequenceEdit, QGroupBox)
+    QProgressDialog, QFrame, QSizePolicy, QStackedLayout, QMenu, QKeySequenceEdit, QGroupBox, QGraphicsDropShadowEffect)
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from . import core
@@ -16,7 +16,7 @@ from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.1.0'
+BUILD_VERSION = '1.2.0'
 
 
 I18N = {
@@ -459,6 +459,11 @@ def icon(kind, color='#687080'):
     elif kind == 'settings':
         for y, x in [(6, 8), (12, 16), (18, 10)]:
             p.drawLine(3, y, 21, y); p.setBrush(QColor(color)); p.drawEllipse(QRectF(x - 2, y - 2, 4, 4)); p.setBrush(Qt.NoBrush)
+    elif kind == 'help':
+        p.drawEllipse(QRectF(4, 4, 16, 16))
+        p.drawArc(QRectF(9, 7, 7, 7), 10 * 16, 185 * 16)
+        p.drawLine(12, 14, 12, 15)
+        p.drawPoint(12, 18)
     elif kind == 'sun':
         p.drawEllipse(QRectF(8, 8, 8, 8))
         for a, b, c, d in [(12,2,12,4),(12,20,12,22),(2,12,4,12),(20,12,22,12),
@@ -649,15 +654,15 @@ class Timeline(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        bg = QColor('#25272e' if self.dark else '#ffffff')
-        line = QColor('#363944' if self.dark else '#e4e6ed')
+        bg = QColor('#252933' if self.dark else '#ffffff')
+        line = QColor('#343c4c' if self.dark else '#e5e8f1')
         top = 40 if not self.dub else 10
         h = max(54, self.height() - top - 16)
         p.setPen(QPen(line, 1)); p.setBrush(bg)
         p.drawRoundedRect(QRectF(2, top, self.width() - 4, h), 24, 24)
         if not self.project:
             return
-        color = QColor('#b297fa' if self.dub else '#8b9aa9')
+        color = QColor('#b6a9fa' if self.dub else ('#94a4ba' if self.dark else '#8794ad'))
         view_a, view_b = self.view_bounds()
 
         def wave(values, start, end):
@@ -815,16 +820,28 @@ class Timeline(QWidget):
         return idx if dist <= 13 else None
 
     def handle_at(self, pos):
-        if self.dub or not self.project or not self.project.segments or self.active not in self.visible_indices():
+        # Every numbered needle is draggable, not only the currently selected one.
+        # Internal boundaries are represented by the *next* segment's start,
+        # which also adjusts the preceding segment's end.
+        if self.dub or not self.project or not self.project.segments:
             return None
-        seg = self.project.segments[self.active]
+        if pos.y() > max(46, self.height() - self.resize_margin):
+            return None
         px = pos.x()
-        candidates = [
-            (abs(self.x(seg.start) - px), self.active, 'start'),
-            (abs(self.x(seg.end) - px), self.active, 'end'),
-        ]
-        dist, i, edge = min(candidates)
-        return (i, edge) if dist <= 11 else None
+        candidates = [(abs(self.x(self.project.segments[i].start) - px), 0, i, 'start')
+                      for i in self.visible_indices()]
+        # The final boundary has no next numbered badge, but must still be movable.
+        for i in self.visible_indices():
+            seg = self.project.segments[i]
+            next_is_shared = (i + 1 < len(self.project.segments) and
+                              self.project.segments[i + 1].part_id == seg.part_id and
+                              abs(self.project.segments[i + 1].start - seg.end) < .006)
+            if not next_is_shared:
+                candidates.append((abs(self.x(seg.end) - px), 1, i, 'end'))
+        if not candidates:
+            return None
+        dist, _, i, edge = min(candidates)
+        return (i, edge) if dist <= 15 else None
 
     def in_resize_zone(self, pos):
         return (not self.dub) and pos.y() >= self.height() - self.resize_margin
@@ -845,6 +862,8 @@ class Timeline(QWidget):
             return
         handle = self.handle_at(event.position())
         if handle:
+            # Click to select; keep the drag target for moving its time boundary.
+            self.selected.emit(handle[0])
             self.drag_target = handle
             self.dragged = False
             self.press_x = event.position().x()
@@ -936,7 +955,7 @@ class Timeline(QWidget):
             self.setCursor(Qt.ArrowCursor)
             self.update()
             if clicked:
-                self.edit.emit(i)
+                self.selected.emit(i)
             return
         if self.scrubbing:
             self.scrubbing = False
@@ -963,11 +982,80 @@ class Timeline(QWidget):
         event.accept()
 
 
+class ModernDialog(QDialog):
+    """Custom rounded dialog shell with accessible close and draggable title region."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName('modernDialog')
+        self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setModal(True)
+        shell = QVBoxLayout(self)
+        shell.setContentsMargins(18, 18, 18, 18)
+        shell.setSpacing(0)
+        self.panel = QFrame(self)
+        self.panel.setObjectName('dialogSurface')
+        shell.addWidget(self.panel)
+        shadow = QGraphicsDropShadowEffect(self.panel)
+        shadow.setBlurRadius(36)
+        shadow.setColor(QColor(20, 31, 60, 42))
+        shadow.setOffset(0, 9)
+        self.panel.setGraphicsEffect(shadow)
+        panel_layout = QVBoxLayout(self.panel)
+        panel_layout.setContentsMargins(22, 15, 22, 20)
+        panel_layout.setSpacing(15)
+        self.header = QFrame()
+        self.header.setObjectName('dialogHeader')
+        header_row = QHBoxLayout(self.header)
+        header_row.setContentsMargins(2, 0, 0, 6)
+        self.heading = QLabel()
+        self.heading.setObjectName('dialogTitle')
+        header_row.addWidget(self.heading)
+        header_row.addStretch()
+        self.dismiss = QPushButton('×')
+        self.dismiss.setObjectName('dialogClose')
+        self.dismiss.setToolTip('Fechar / Close')
+        self.dismiss.setFixedSize(30, 30)
+        self.dismiss.clicked.connect(self.reject)
+        header_row.addWidget(self.dismiss)
+        panel_layout.addWidget(self.header)
+        self.body = QWidget(self.panel)
+        self.body.setObjectName('dialogBody')
+        panel_layout.addWidget(self.body, 1)
+        self._drag_from = None
+        self.header.installEventFilter(self)
+        self.heading.installEventFilter(self)
+
+    def setWindowTitle(self, text):
+        super().setWindowTitle(text)
+        if hasattr(self, 'heading'):
+            self.heading.setText(text)
+
+    def eventFilter(self, obj, event):
+        if obj in (self.header, self.heading):
+            if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+                self._drag_from = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+                return True
+            if event.type() == QEvent.MouseMove and self._drag_from is not None and event.buttons() & Qt.LeftButton:
+                self.move(event.globalPosition().toPoint() - self._drag_from)
+                return True
+            if event.type() == QEvent.MouseButtonRelease:
+                self._drag_from = None
+                return True
+        return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.reject()
+            return
+        super().keyPressEvent(event)
+
+
 class Window(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('DubStudio')
-        self.resize(1100, 850)
+        self.resize(1200, 820)
         self.setMinimumSize(760, 610)
         self.project = None
         self.index = 0
@@ -980,7 +1068,9 @@ class Window(QMainWindow):
         self.pending_take = None
         self.settings = QSettings('DubStudio', 'DubStudio')
         self.shortcuts = self._load_shortcuts()
-        self.dark = self.settings.value('dark', False, type=bool)
+        # New appearance has its own setting: existing v1.1 dark preference does not
+        # force the redesigned app to open dark on the first v1.2 launch.
+        self.dark = self.settings.value('appearance/v2/dark', False, type=bool)
         self.device = None
         self.silence = .55
         self.threshold = -35.
@@ -994,7 +1084,7 @@ class Window(QMainWindow):
         if self.transcription_model not in MODEL_KEYS:
             self.transcription_model = 'small'
         self.video_ratio = 16 / 9
-        self.video_area_height = 230
+        self.video_area_height = 340
         self.original_timeline_height = max(100, min(460, self.settings.value('original_timeline_height', 122, type=int)))
         self.transcription_status_timer = QTimer(self)
         self.transcription_status_timer.setSingleShot(True)
@@ -1029,13 +1119,19 @@ class Window(QMainWindow):
         self.timer.timeout.connect(self.tick)
 
         outer = QWidget()
+        outer.setObjectName('centralCanvas')
         self.setCentralWidget(outer)
         layout = QVBoxLayout(outer)
-        layout.setContentsMargins(24, 14, 24, 18)
-        layout.setSpacing(4)
+        layout.setContentsMargins(26, 16, 26, 22)
+        layout.setSpacing(12)
 
         top = QHBoxLayout()
+        top.setSpacing(10)
         layout.addLayout(top)
+        brand = QLabel('DubStudio')
+        brand.setObjectName('brandTitle')
+        top.addWidget(brand)
+        top.addSpacing(14)
         self.open_btn = self.button('folder', self.tr('open_project') + ' · ' + self.shortcut_text('open'), self.open_project)
         top.addWidget(self.open_btn)
         self.close_project_btn = QPushButton(self.tr('close_project'))
@@ -1050,6 +1146,8 @@ class Window(QMainWindow):
         self.import_btn.clicked.connect(self.import_video)
         top.addWidget(self.import_btn)
         top.addStretch()
+        self.help_btn = self.button('help', 'Tutorial', lambda: self.show_tutorial(True))
+        top.addWidget(self.help_btn)
         self.theme_btn = self.button('sun', self.tr('theme'), self.toggle_theme)
         top.addWidget(self.theme_btn)
         self.options_btn = self.button('settings', self.tr('preferences'), self.preferences)
@@ -1063,14 +1161,14 @@ class Window(QMainWindow):
         self.body = body
         self.page.setWidget(body)
         stack = QVBoxLayout(body)
-        stack.setContentsMargins(0, 10, 0, 4)
-        stack.setSpacing(6)
+        stack.setContentsMargins(0, 8, 0, 12)
+        stack.setSpacing(10)
 
         self.video_box = QFrame()
         self.video_box.setObjectName('videoBox')
         self.video_box.setFixedHeight(self.video_area_height)
         vl = QVBoxLayout(self.video_box)
-        vl.setContentsMargins(0, 0, 0, 0)
+        vl.setContentsMargins(18, 12, 18, 12)
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
@@ -1092,6 +1190,8 @@ class Window(QMainWindow):
         viewer_stack.addWidget(self.video)
 
         self.empty = QPushButton(self.tr('import_video'))
+        self.empty.setObjectName('emptyState')
+        self.empty.setCursor(Qt.PointingHandCursor)
         self.empty.clicked.connect(self.import_video)
         viewer_stack.addWidget(self.empty)
         viewer_stack.setCurrentWidget(self.empty)
@@ -1106,6 +1206,10 @@ class Window(QMainWindow):
         self.transcription_status.setAlignment(Qt.AlignCenter)
         self.transcription_status.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.transcription_status.hide()
+        video_header = QLabel('VÍDEO ORIGINAL' if self.ui_language == 'pt' else ('SOURCE VIDEO' if self.ui_language == 'en' else '元の動画'))
+        video_header.setObjectName('sectionHeading')
+        stack.addWidget(video_header)
+        self.video_header = video_header
         stack.addWidget(self.video_box)
         grip = ResizeGrip()
         grip.moved.connect(self.resize_video)
@@ -1176,6 +1280,10 @@ class Window(QMainWindow):
         self.original.edit.connect(self.edit_segment)
         self.original.boundaryChanged.connect(self.boundary_changed)
         self.original.setToolTip(self.tr('mark_shortcut_tip').replace('M', self.shortcut_text('mark')))
+        original_heading = QLabel('FAIXA ORIGINAL  ·  Arraste as agulhas numeradas para ajustar os trechos')
+        original_heading.setObjectName('sectionHeading')
+        self.original_heading = original_heading
+        stack.addWidget(original_heading)
         stack.addWidget(self.track_scroll[0])
 
         # Compatibility objects for older code paths. The workflow itself now lives in the
@@ -1229,6 +1337,10 @@ class Window(QMainWindow):
         self.reference.replaceRequested.connect(self.import_reference)
         self.reference.autoRequested.connect(self.use_auto_reference)
         stack.addWidget(self.reference)
+        dub_heading = QLabel('SUA GRAVAÇÃO')
+        dub_heading.setObjectName('sectionHeading')
+        self.dub_heading = dub_heading
+        stack.addWidget(dub_heading)
         stack.addWidget(self.track_scroll[1])
         stack.addStretch()
 
@@ -1258,6 +1370,7 @@ class Window(QMainWindow):
         self.theme()
         self.set_enabled()
         QTimer.singleShot(0, self.zoom_changed)
+        QTimer.singleShot(550, self.show_tutorial)
 
     def tr(self, key, **kwargs):
         text = I18N.get(self.ui_language, I18N['pt']).get(key, I18N['pt'].get(key, key))
@@ -1270,7 +1383,10 @@ class Window(QMainWindow):
         self.close_project_btn.setToolTip(self.tr('close_project') + ' · ' + self.shortcut_text('close'))
         self.close_project_btn.setAccessibleName(self.tr('close_project'))
         self.import_btn.setText(self.tr('import_video'))
-        self.empty.setText(self.tr('import_video'))
+        self.empty.setText(('＋  ' + self.tr('import_video') + '\nMP4 · MOV · MKV · WEBM'))
+        self.video_header.setText({'pt': 'VÍDEO ORIGINAL', 'en': 'SOURCE VIDEO', 'ja': '元の動画'}.get(self.ui_language, 'VÍDEO ORIGINAL'))
+        self.original_heading.setText({'pt': 'FAIXA ORIGINAL  ·  Arraste as agulhas numeradas para ajustar os trechos', 'en': 'SOURCE TRACK  ·  Drag numbered markers to adjust segments', 'ja': '元の音声  ·  数字付きのマーカーをドラッグして調整'}.get(self.ui_language, 'FAIXA ORIGINAL'))
+        self.dub_heading.setText({'pt': 'SUA GRAVAÇÃO', 'en': 'YOUR RECORDING', 'ja': '録音'}.get(self.ui_language, 'SUA GRAVAÇÃO'))
         self.theme_btn.setToolTip(self.tr('theme'))
         self.options_btn.setToolTip(self.tr('preferences'))
         self.restart_btn.setToolTip(self.tr('restart'))
@@ -1309,59 +1425,160 @@ class Window(QMainWindow):
         return b
 
     def theme(self):
-        """Subtle native-desktop styling; no custom title bars or web-like chrome."""
+        """Quiet, native-feeling desktop palette: translucent controls and rounded panels."""
         if self.dark:
-            bg, fg, surface, border = '#17191e', '#ebeef5', '#23262d', '#343840'
-            hover, muted, selection = '#2d323b', '#a7afbe', '#244d81'
+            bg, fg, surface, border = '#171b24', '#f0f2f8', '#242b37', '#3a4252'
+            hover, muted, selection = '#323c4c', '#a8b4c7', '#394a69'
+            raised, hint, accent = '#202632', '#8491a7', '#9da8ff'
         else:
-            bg, fg, surface, border = '#f5f6f8', '#20232a', '#ffffff', '#e0e3e9'
-            hover, muted, selection = '#eef3fb', '#667085', '#dceafa'
-        self.setStyleSheet(f"""
-        QMainWindow, QWidget {{ background-color: {bg}; color: {fg}; font-family: 'SF Pro Text','Segoe UI'; font-size: 13px; }}
-        QScrollArea, QScrollArea > QWidget > QWidget {{ border: none; }}
+            bg, fg, surface, border = '#f6f7fa', '#242938', '#ffffff', '#e1e5ee'
+            hover, muted, selection = '#edf1f9', '#7a859a', '#e8ecff'
+            raised, hint, accent = '#f0f3f9', '#74809a', '#6667d9'
+        QApplication.instance().setStyleSheet(f"""
+        QWidget {{ color: {fg}; font-family: 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', sans-serif; font-size: 13px; }}
+        QMainWindow, QWidget#centralCanvas, QWidget#canvasBody, QScrollArea {{ background-color: {bg}; }}
+        QScrollArea {{ border: none; }}
+        QScrollArea > QWidget > QWidget {{ border: none; }}
+        QLabel#brandTitle {{ font-weight: 700; font-size: 19px; letter-spacing: -0.4px; color: {fg}; }}
+        QLabel#sectionHeading {{ color: {hint}; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+                                 padding-top: 7px; padding-left: 9px; padding-bottom: 1px; }}
         QPushButton {{ background-color: {surface}; color: {fg}; border: 1px solid {border};
-                      border-radius: 10px; padding: 7px 13px; min-height: 18px; }}
+                      border-radius: 12px; padding: 8px 14px; min-height: 22px; }}
         QPushButton:hover {{ background-color: {hover}; border-color: {muted}; }}
         QPushButton:pressed {{ background-color: {selection}; }}
+        QPushButton:focus {{ border: 1px solid {accent}; }}
         QPushButton:disabled {{ color: {muted}; border-color: {border}; }}
-        QPushButton#primaryButton {{ color: #fff; background-color: #2879da; border-color: #2879da; }}
-        QPushButton#primaryButton:hover {{ background-color: #196ac7; }}
+        QPushButton#primaryButton {{ color: #ffffff; background-color: #6263d6; border: 1px solid #6263d6; }}
+        QPushButton#primaryButton:hover {{ background-color: #5154c5; }}
+        QPushButton#emptyState {{ background-color: {raised}; border: 2px dashed {border};
+                                 border-radius: 22px; color: {hint}; font-size: 16px; font-weight: 600; }}
+        QPushButton#emptyState:hover {{ color: {accent}; border-color: {accent}; background: {selection}; }}
         QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDoubleSpinBox, QKeySequenceEdit {{
             background-color: {surface}; color: {fg}; border: 1px solid {border};
-            border-radius: 9px; padding: 8px; selection-background-color: {selection}; }}
-        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QKeySequenceEdit:focus {{
-            border: 1px solid #5494e7; }}
-        QComboBox::drop-down {{ border: none; width: 20px; }}
-        QGroupBox {{ border: 1px solid {border}; border-radius: 11px; margin-top: 13px;
-                     padding-top: 12px; background: {surface}; font-weight: 500; }}
+            border-radius: 11px; padding: 9px 12px; selection-background-color: {selection}; min-height: 22px; }}
+        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QDoubleSpinBox:focus,
+        QKeySequenceEdit:focus {{ border: 1px solid {accent}; }}
+        QComboBox::drop-down {{ border: none; width: 26px; }}
+        QGroupBox {{ border: 1px solid {border}; border-radius: 15px; margin-top: 16px;
+                     padding: 16px 12px 12px 12px; background: {surface}; font-weight: 600; }}
         QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left;
-                            left: 12px; padding: 0 6px; background: {surface}; }}
+                            left: 14px; padding: 0 8px; background: {surface}; }}
         QDialog {{ background-color: {bg}; }}
-        QFrame#videoBox {{ background: transparent; border: none; }}
-        QFrame#videoViewer {{ background: #000000; border: none; border-radius: 14px; }}
-        QLabel#transcriptionStatus {{ background: rgba(22,25,31,205); color: white;
-            border: 1px solid rgba(255,255,255,30); border-radius: 10px; padding: 9px 14px; }}
-        QPushButton#record {{ background: #d95365; border: none; border-radius: 28px; }}
+        QDialog#modernDialog {{ background-color: transparent; }}
+        QFrame#dialogSurface {{ background-color: {surface}; border: 1px solid {border}; border-radius: 23px; }}
+        QFrame#dialogHeader {{ background: transparent; border: none; }}
+        QLabel#dialogTitle {{ font-size: 17px; font-weight: 700; }}
+        QPushButton#dialogClose {{ background-color: {raised}; color: {hint}; border: none;
+                                   font-size: 19px; border-radius: 15px; padding: 0; }}
+        QPushButton#dialogClose:hover {{ background-color: {selection}; color: {fg}; }}
+        QWidget#dialogBody {{ background-color: transparent; }}
+        QFrame#videoBox {{ background-color: {surface}; border: 1px solid {border}; border-radius: 22px; }}
+        QFrame#videoViewer {{ background: #08090c; border: none; border-radius: 20px; }}
+        QLabel#transcriptionStatus {{ background: rgba(22,25,31,210); color: white;
+            border: 1px solid rgba(255,255,255,30); border-radius: 12px; padding: 10px 14px; }}
+        QPushButton#record {{ background: #d34d6d; color: white; border: none; border-radius: 29px; }}
+        QPushButton#record:hover {{ background: #b83a5c; }}
         QScrollBar:horizontal {{ height: 8px; background: transparent; }}
         QScrollBar:vertical {{ width: 8px; background: transparent; }}
         QScrollBar::handle {{ background: {muted}; border-radius: 4px; min-width: 24px; min-height: 24px; }}
         QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
-        QSlider::groove:horizontal {{ height: 4px; background: {border}; border-radius: 2px; }}
-        QSlider::handle:horizontal {{ width: 13px; margin: -5px 0; background: #448de0; border-radius: 6px; }}
-        QToolTip {{ background: {surface}; color: {fg}; border: 1px solid {border}; padding: 5px; }}
+        QSlider::groove:horizontal {{ height: 5px; background: {border}; border-radius: 3px; }}
+        QSlider::handle:horizontal {{ width: 15px; margin: -5px 0; background: {accent}; border-radius: 7px; }}
+        QToolTip {{ background: {surface}; color: {fg}; border: 1px solid {border}; border-radius: 8px; padding: 7px; }}
+        QMenu {{ background: {surface}; border: 1px solid {border}; border-radius: 13px; padding: 8px; }}
+        QMenu::item {{ padding: 9px 22px; border-radius: 7px; }}
+        QMenu::item:selected {{ background: {selection}; }}
         """)
         for button in self.findChildren(QPushButton):
             kind = button.property('icon_kind')
             if kind:
-                color = '#fff' if button is self.record_btn and self.recording else muted
+                color = '#ffffff' if button is self.record_btn else muted
                 button.setIcon(icon(kind, color))
         for track in (self.original, self.dub):
             track.dark = self.dark
             track.update()
 
+    def show_tutorial(self, force=False):
+        if not force and self.settings.value('onboarding/v2/completed', False, type=bool):
+            return
+        languages = {
+            'pt': [
+                ('Bem-vindo ao DubStudio', 'Este é seu espaço de dublagem. Importe um vídeo para começar, ou abra um projeto que você já salvou.'),
+                ('Marque os trechos', 'Na faixa original, pressione M para marcar divisões. Arraste as agulhas numeradas para ajustar os limites. Dê dois cliques para editar os tempos exatos.'),
+                ('Grave e compare', 'Selecione um trecho, use R para gravar e Espaço para reproduzir. Sua gravação aparece na faixa inferior.'),
+                ('Seu espaço de trabalho', 'Ajuste o tamanho da faixa pela borda inferior. Use o botão de sol para o tema escuro e Preferências para personalizar seus atalhos.'),
+            ],
+            'en': [
+                ('Welcome to DubStudio', 'This is your dubbing workspace. Import a video to begin, or open an existing project.'),
+                ('Set your segments', 'Press M on the original track to split. Drag any numbered marker to adjust the boundaries. Double-click to enter exact times.'),
+                ('Record and compare', 'Select a segment, press R to record and Space to play. Your take appears in the lower track.'),
+                ('Make it your own', 'Drag the bottom edge of a track to resize it. Use the sun button to change theme and Preferences to remap shortcuts.'),
+            ],
+            'ja': [
+                ('DubStudioへようこそ', '動画を読み込むか、保存したプロジェクトを開いて始めましょう。'),
+                ('区間を調整', 'Mキーで区間を分割し、番号の付いたマーカーをドラッグして時間を調整します。ダブルクリックで時間を入力できます。'),
+                ('録音と確認', 'Rキーで録音し、スペースキーで再生します。録音は下のトラックに表示されます。'),
+                ('使いやすく調整', 'トラックの下端をドラッグして高さを変更できます。設定からショートカットも変更できます。'),
+            ]
+        }
+        steps = languages.get(self.ui_language, languages['pt'])
+        d = ModernDialog(self)
+        d.setWindowTitle({'pt': 'Guia rápido', 'en': 'Quick tour', 'ja': 'クイックガイド'}.get(self.ui_language, 'Guia rápido'))
+        d.resize(550, 325)
+        root = QVBoxLayout(d.body)
+        root.setContentsMargins(12, 10, 12, 2)
+        root.setSpacing(16)
+        progress = QLabel('')
+        progress.setObjectName('sectionHeading')
+        title = QLabel('')
+        title.setStyleSheet('font-size: 21px; font-weight: 700;')
+        description = QLabel('')
+        description.setWordWrap(True)
+        description.setMinimumHeight(82)
+        root.addWidget(progress)
+        root.addWidget(title)
+        root.addWidget(description)
+        root.addStretch()
+        foot = QHBoxLayout()
+        skip = QPushButton({'pt': 'Pular tutorial', 'en': 'Skip tour', 'ja': 'スキップ'}.get(self.ui_language, 'Pular'))
+        previous = QPushButton({'pt': 'Voltar', 'en': 'Back', 'ja': '戻る'}.get(self.ui_language, 'Voltar'))
+        next_btn = QPushButton()
+        next_btn.setObjectName('primaryButton')
+        foot.addWidget(skip)
+        foot.addStretch()
+        foot.addWidget(previous)
+        foot.addWidget(next_btn)
+        root.addLayout(foot)
+        state = {'index': 0}
+        def render():
+            idx = state['index']
+            progress.setText(f'{idx + 1} / {len(steps)}')
+            title.setText(steps[idx][0])
+            description.setText(steps[idx][1])
+            previous.setEnabled(idx > 0)
+            next_btn.setText(({'pt': 'Começar', 'en': 'Get started', 'ja': '開始'}.get(self.ui_language, 'Começar') if idx == len(steps) - 1
+                              else {'pt': 'Próximo', 'en': 'Next', 'ja': '次へ'}.get(self.ui_language, 'Próximo')))
+        def advance():
+            if state['index'] == len(steps) - 1:
+                d.accept()
+            else:
+                state['index'] += 1
+                render()
+        def back():
+            state['index'] -= 1
+            render()
+        skip.clicked.connect(d.reject)
+        previous.clicked.connect(back)
+        next_btn.clicked.connect(advance)
+        render()
+        d.exec()
+        # Even if skipped, do not interrupt on every launch. The help button
+        # lets the user return to the tour at any time.
+        self.settings.setValue('onboarding/v2/completed', True)
+
     def toggle_theme(self):
         self.dark = not self.dark
-        self.settings.setValue('dark', self.dark)
+        self.settings.setValue('appearance/v2/dark', self.dark)
         self.theme()
 
     def resize_video(self, delta):
@@ -1635,9 +1852,9 @@ class Window(QMainWindow):
                  lambda _: core.prepare_video(path, lang, self.silence, self.threshold), self.imported)
 
     def choose_language(self):
-        d = QDialog(self)
+        d = ModernDialog(self)
         d.setWindowTitle(self.tr('audio_language_title'))
-        f = QFormLayout(d)
+        f = QFormLayout(d.body)
         c = QComboBox()
         c.addItem(self.tr('audio_auto'), 'auto')
         c.addItem(self.tr('audio_pt'), 'pt')
@@ -2352,12 +2569,12 @@ class Window(QMainWindow):
         self.select(i)
         seg = self.project.segments[i]
         chapter_no = self.original.chapter_number(i)
-        d = QDialog(self)
+        d = ModernDialog(self)
         d.setWindowTitle(f"{self.tr('chapter')} {chapter_no}")
         d.setSizeGripEnabled(True)
         d.setMinimumSize(430, 210)
         d.resize(500, 250)
-        f = QFormLayout(d)
+        f = QFormLayout(d.body)
         f.addRow(self.tr('chapter'), QLabel(str(chapter_no)))
         start = QDoubleSpinBox(); end = QDoubleSpinBox()
         for box in (start, end):
@@ -2557,10 +2774,10 @@ class Window(QMainWindow):
 
     def shortcut_settings(self):
         lang = LABELS.get(self.ui_language, LABELS['pt'])
-        dialog = QDialog(self)
+        dialog = ModernDialog(self)
         dialog.setWindowTitle(lang['shortcuts'])
         dialog.resize(600, 640)
-        root = QVBoxLayout(dialog)
+        root = QVBoxLayout(dialog.body)
         root.setContentsMargins(22, 20, 22, 20)
         root.setSpacing(14)
         hint = QLabel(lang['shortcuts_hint'])
@@ -2897,9 +3114,9 @@ class Window(QMainWindow):
         missing = sum(not s.take for s in self.project.segments)
         if missing and not self.ask(self.tr('missing_takes', n=missing)):
             return
-        d = QDialog(self)
+        d = ModernDialog(self)
         d.setWindowTitle(self.tr('export'))
-        f = QFormLayout(d)
+        f = QFormLayout(d.body)
         c = QComboBox(); c.addItems(core.FORMATS)
         f.addRow(self.tr('format'), c)
         note = QLabel(self.tr('export_note'))
@@ -2920,11 +3137,11 @@ class Window(QMainWindow):
 
     def preferences(self):
         import sounddevice as sd
-        d = QDialog(self)
+        d = ModernDialog(self)
         d.setWindowTitle(self.tr('prefs_title'))
         d.setSizeGripEnabled(True)
         d.resize(620, 470)
-        f = QFormLayout(d)
+        f = QFormLayout(d.body)
 
         ui_lang = QComboBox()
         ui_lang.addItem('Português', 'pt')
@@ -3020,23 +3237,27 @@ class Window(QMainWindow):
 
 
 def main():
+    # Set Windows AppUserModelID before the QApplication exists; this is needed
+    # for correct pinned taskbar grouping and icon rendering on Windows.
+    if os.name == 'nt':
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('DubStudio.DubStudio.Desktop')
+        except Exception:
+            pass
     app = QApplication(sys.argv)
     app.setApplicationName('DubStudio')
     app.setOrganizationName('DubStudio')
-    if os.name == 'nt':
-        try:
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('DubStudio.DubStudio')
-        except Exception:
-            pass
-    icon_path = Path(__file__).resolve().parent.parent / 'dubstudio.ico'
-    if icon_path.exists():
-        app_icon = QIcon(str(icon_path))
-        app.setWindowIcon(app_icon)
-    else:
-        app_icon = QIcon()
+    base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+    candidates = [base / 'assets' / 'dubstudio.ico', base / 'assets' / 'dubstudio.png',
+                  Path(__file__).resolve().parent.parent / 'assets' / 'dubstudio.png']
+    for path in candidates:
+        if path.is_file():
+            app_icon = QIcon(str(path))
+            if not app_icon.isNull():
+                app.setWindowIcon(app_icon)
+                break
     app.setStyle('Fusion')
     window = Window()
-    if not app_icon.isNull():
-        window.setWindowIcon(app_icon)
-    window.show()
+    window.setWindowIcon(app.windowIcon())
+    window.showMaximized()  # Maximized, NOT exclusive fullscreen; keeps OS titlebar/controls.
     sys.exit(app.exec())

@@ -41,6 +41,7 @@ def main():
     ico = build_icon()
     args = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean',
         '--windowed', '--onedir', '--noupx', '--name', 'DubStudio', '--icon', str(ico),
+        '--add-data', f'{ICON}{os.pathsep}assets',
         '--collect-all', 'imageio_ffmpeg', '--collect-all', 'faster_whisper',
         '--collect-all', 'ctranslate2', '--collect-all', 'tokenizers',
         '--collect-all', 'soundfile', '--collect-all', 'sounddevice',

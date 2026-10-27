@@ -16,7 +16,7 @@ from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.3.3'
+BUILD_VERSION = '1.3.4'
 
 
 I18N = {
@@ -383,6 +383,90 @@ CLEAN_WORKFLOW_I18N = {
 }
 for _lang, _values in CLEAN_WORKFLOW_I18N.items():
     I18N[_lang].update(_values)
+
+# Permanent workspace labels, translated independently of system locale.
+WORKSPACE_I18N = {
+  "pt": {
+    "workspace_title": "Seu estúdio de dublagem",
+    "sidebar_tagline": "ESPAÇO CRIATIVO DE ÁUDIO",
+    "sidebar_project_title": "SEU PROJETO",
+    "sidebar_no_video": "Nenhum vídeo aberto",
+    "sidebar_import_hint": "Importe um vídeo para começar.",
+    "sidebar_project_without_video": "Projeto sem vídeo",
+    "sidebar_segment_count": "{count} trechos",
+    "sidebar_workspace": "ESPAÇO DE TRABALHO",
+    "sidebar_source_video": "Vídeo original",
+    "sidebar_source_audio": "Áudio original",
+    "sidebar_your_recording": "Sua gravação",
+    "sidebar_shortcuts_title": "ATALHOS RÁPIDOS",
+    "sidebar_mark": "Marcar trecho",
+    "sidebar_record": "Gravar",
+    "sidebar_play": "Reproduzir",
+    "sidebar_video_heading": "VÍDEO ORIGINAL",
+    "sidebar_original_heading": "FAIXA ORIGINAL  ·  Arraste as agulhas numeradas para ajustar os trechos",
+    "sidebar_dub_heading": "SUA GRAVAÇÃO",
+    "tutorial_button": "Tutorial",
+    "dialog_close": "Fechar",
+    "dialog_cancel": "Cancelar",
+    "dialog_ok": "OK",
+    "mic_no_audio": "O microfone não enviou áudio.",
+    "saving_project_media": "Salvando projeto com vídeo e gravações…"
+  },
+  "en": {
+    "workspace_title": "Your dubbing studio",
+    "sidebar_tagline": "CREATIVE AUDIO WORKSPACE",
+    "sidebar_project_title": "YOUR PROJECT",
+    "sidebar_no_video": "No video open",
+    "sidebar_import_hint": "Import a video to get started.",
+    "sidebar_project_without_video": "Project without video",
+    "sidebar_segment_count": "{count} segments",
+    "sidebar_workspace": "WORKSPACE",
+    "sidebar_source_video": "Source video",
+    "sidebar_source_audio": "Original audio",
+    "sidebar_your_recording": "Your recording",
+    "sidebar_shortcuts_title": "QUICK SHORTCUTS",
+    "sidebar_mark": "Mark segment",
+    "sidebar_record": "Record",
+    "sidebar_play": "Play",
+    "sidebar_video_heading": "SOURCE VIDEO",
+    "sidebar_original_heading": "SOURCE TRACK  ·  Drag numbered markers to adjust segments",
+    "sidebar_dub_heading": "YOUR RECORDING",
+    "tutorial_button": "Quick tour",
+    "dialog_close": "Close",
+    "dialog_cancel": "Cancel",
+    "dialog_ok": "OK",
+    "mic_no_audio": "The microphone did not capture any audio.",
+    "saving_project_media": "Saving project with video and recordings…"
+  },
+  "ja": {
+    "workspace_title": "ダビングスタジオ",
+    "sidebar_tagline": "音声制作ワークスペース",
+    "sidebar_project_title": "プロジェクト",
+    "sidebar_no_video": "動画が開かれていません",
+    "sidebar_import_hint": "動画を読み込んで開始してください。",
+    "sidebar_project_without_video": "動画のないプロジェクト",
+    "sidebar_segment_count": "{count} 区間",
+    "sidebar_workspace": "作業スペース",
+    "sidebar_source_video": "元の動画",
+    "sidebar_source_audio": "元の音声",
+    "sidebar_your_recording": "自分の録音",
+    "sidebar_shortcuts_title": "よく使うショートカット",
+    "sidebar_mark": "区間をマーク",
+    "sidebar_record": "録音",
+    "sidebar_play": "再生",
+    "sidebar_video_heading": "元の動画",
+    "sidebar_original_heading": "元の音声  ·  数字付きのマーカーをドラッグして区間を調整",
+    "sidebar_dub_heading": "自分の録音",
+    "tutorial_button": "クイックガイド",
+    "dialog_close": "閉じる",
+    "dialog_cancel": "キャンセル",
+    "dialog_ok": "OK",
+    "mic_no_audio": "マイクから音声を取得できませんでした。",
+    "saving_project_media": "動画と録音を含むプロジェクトを保存中…"
+  }
+}
+for _lang, _text in WORKSPACE_I18N.items():
+    I18N[_lang].update(_text)
 
 MODEL_KEYS = {
     'tiny': ('model_tiny_name', 'model_tiny_desc'),
@@ -1068,7 +1152,7 @@ class ModernDialog(QDialog):
         header_row.addStretch()
         self.dismiss = QPushButton('×')
         self.dismiss.setObjectName('dialogClose')
-        self.dismiss.setToolTip('Fechar / Close')
+        self.dismiss.setToolTip(parent.tr('dialog_close') if parent is not None and hasattr(parent, 'ui_language') else 'Close')
         self.dismiss.setFixedSize(30, 30)
         self.dismiss.clicked.connect(self.reject)
         header_row.addWidget(self.dismiss)
@@ -1197,23 +1281,23 @@ class Window(QMainWindow):
         brand_row.addWidget(self.brand_sidebar_name)
         brand_row.addStretch()
         side.addLayout(brand_row)
-        sidebar_tagline = QLabel('CREATIVE AUDIO WORKSPACE')
-        sidebar_tagline.setObjectName('sidebarEyebrow')
-        side.addWidget(sidebar_tagline)
+        self.sidebar_tagline = QLabel(self.tr('sidebar_tagline'))
+        self.sidebar_tagline.setObjectName('sidebarEyebrow')
+        side.addWidget(self.sidebar_tagline)
         side.addSpacing(18)
 
-        project_caption = QLabel('SEU PROJETO')
-        project_caption.setObjectName('sidebarEyebrow')
-        side.addWidget(project_caption)
+        self.sidebar_project_caption = QLabel(self.tr('sidebar_project_title'))
+        self.sidebar_project_caption.setObjectName('sidebarEyebrow')
+        side.addWidget(self.sidebar_project_caption)
         self.sidebar_project = QFrame()
         self.sidebar_project.setObjectName('sidebarProject')
         project_card = QVBoxLayout(self.sidebar_project)
         project_card.setContentsMargins(14, 13, 14, 14)
         project_card.setSpacing(6)
-        self.sidebar_project_name = QLabel('Nenhum vídeo aberto')
+        self.sidebar_project_name = QLabel(self.tr('sidebar_no_video'))
         self.sidebar_project_name.setObjectName('sidebarProjectName')
         self.sidebar_project_name.setWordWrap(True)
-        self.sidebar_project_details = QLabel('Importe um vídeo para começar.')
+        self.sidebar_project_details = QLabel(self.tr('sidebar_import_hint'))
         self.sidebar_project_details.setObjectName('sidebarProjectDetails')
         self.sidebar_project_details.setWordWrap(True)
         project_card.addWidget(self.sidebar_project_name)
@@ -1221,12 +1305,13 @@ class Window(QMainWindow):
         side.addWidget(self.sidebar_project)
         side.addSpacing(14)
 
-        nav_caption = QLabel('ESPAÇO DE TRABALHO')
-        nav_caption.setObjectName('sidebarEyebrow')
-        side.addWidget(nav_caption)
+        self.sidebar_nav_caption = QLabel(self.tr('sidebar_workspace'))
+        self.sidebar_nav_caption.setObjectName('sidebarEyebrow')
+        side.addWidget(self.sidebar_nav_caption)
         self.sidebar_nav = []
-        for text in ('Vídeo original', 'Áudio original', 'Sua gravação'):
-            nav = QPushButton('  ' + text)
+        self.sidebar_nav_keys = ('sidebar_source_video', 'sidebar_source_audio', 'sidebar_your_recording')
+        for key in self.sidebar_nav_keys:
+            nav = QPushButton('  ' + self.tr(key))
             nav.setObjectName('sidebarNav')
             nav.setCursor(Qt.PointingHandCursor)
             nav.setProperty('selected', len(self.sidebar_nav) == 0)
@@ -1238,10 +1323,10 @@ class Window(QMainWindow):
         hints_layout = QVBoxLayout(hints)
         hints_layout.setContentsMargins(13, 14, 13, 14)
         hints_layout.setSpacing(7)
-        guide_title = QLabel('ATALHOS RÁPIDOS')
-        guide_title.setObjectName('sidebarEyebrow')
-        hints_layout.addWidget(guide_title)
-        self.sidebar_shortcuts = QLabel('M  ·  Marcar trecho\nR  ·  Gravar\nEspaço  ·  Reproduzir')
+        self.sidebar_guide_title = QLabel(self.tr('sidebar_shortcuts_title'))
+        self.sidebar_guide_title.setObjectName('sidebarEyebrow')
+        hints_layout.addWidget(self.sidebar_guide_title)
+        self.sidebar_shortcuts = QLabel('')
         self.sidebar_shortcuts.setObjectName('sidebarProjectDetails')
         hints_layout.addWidget(self.sidebar_shortcuts)
         side.addWidget(hints)
@@ -1262,9 +1347,9 @@ class Window(QMainWindow):
         top = QHBoxLayout()
         top.setSpacing(10)
         layout.addLayout(top)
-        brand = QLabel('Seu estúdio de dublagem')
-        brand.setObjectName('brandTitle')
-        top.addWidget(brand)
+        self.workspace_title = QLabel(self.tr('workspace_title'))
+        self.workspace_title.setObjectName('brandTitle')
+        top.addWidget(self.workspace_title)
         top.addSpacing(14)
         self.open_btn = self.button('folder', self.tr('open_project') + ' · ' + self.shortcut_text('open'), self.open_project)
         top.addWidget(self.open_btn)
@@ -1280,7 +1365,7 @@ class Window(QMainWindow):
         self.import_btn.clicked.connect(self.import_video)
         top.addWidget(self.import_btn)
         top.addStretch()
-        self.help_btn = self.button('help', 'Tutorial', lambda: self.show_tutorial(True))
+        self.help_btn = self.button('help', self.tr('tutorial_button'), lambda: self.show_tutorial(True))
         top.addWidget(self.help_btn)
         self.theme_btn = self.button('sun', self.tr('theme'), self.toggle_theme)
         top.addWidget(self.theme_btn)
@@ -1343,7 +1428,7 @@ class Window(QMainWindow):
         self.transcription_status.setAlignment(Qt.AlignCenter)
         self.transcription_status.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.transcription_status.hide()
-        video_header = QLabel('VÍDEO ORIGINAL' if self.ui_language == 'pt' else ('SOURCE VIDEO' if self.ui_language == 'en' else '元の動画'))
+        video_header = QLabel(self.tr('sidebar_video_heading'))
         video_header.setObjectName('sectionHeading')
         stack.addWidget(video_header)
         self.video_header = video_header
@@ -1417,7 +1502,7 @@ class Window(QMainWindow):
         self.original.edit.connect(self.edit_segment)
         self.original.boundaryChanged.connect(self.boundary_changed)
         self.original.setToolTip(self.tr('mark_shortcut_tip').replace('M', self.shortcut_text('mark')))
-        original_heading = QLabel('FAIXA ORIGINAL  ·  Arraste as agulhas numeradas para ajustar os trechos')
+        original_heading = QLabel(self.tr('sidebar_original_heading'))
         original_heading.setObjectName('sectionHeading')
         self.original_heading = original_heading
         stack.addWidget(original_heading)
@@ -1474,7 +1559,7 @@ class Window(QMainWindow):
         self.reference.replaceRequested.connect(self.import_reference)
         self.reference.autoRequested.connect(self.use_auto_reference)
         stack.addWidget(self.reference)
-        dub_heading = QLabel('SUA GRAVAÇÃO')
+        dub_heading = QLabel(self.tr('sidebar_dub_heading'))
         dub_heading.setObjectName('sectionHeading')
         self.dub_heading = dub_heading
         stack.addWidget(dub_heading)
@@ -1517,13 +1602,36 @@ class Window(QMainWindow):
         text = I18N.get(self.ui_language, I18N['pt']).get(key, I18N['pt'].get(key, key))
         return text.format(**kwargs) if kwargs else text
 
-    def apply_language(self):
-        if hasattr(self, 'sidebar_shortcuts'):
-            self.sidebar_shortcuts.setText(
-                f"{self.shortcut_text('mark')}  ·  Marcar trecho\n"
-                f"{self.shortcut_text('record')}  ·  Gravar\n"
-                f"{self.shortcut_text('play')}  ·  Reproduzir"
+    def refresh_sidebar_project_info(self):
+        """Update project details without recreating widgets or changing saved data."""
+        if self.project:
+            self.sidebar_project_name.setText(
+                Path(self.project.video).name if self.project.video else self.tr('sidebar_project_without_video')
             )
+            self.sidebar_project_details.setText(
+                self.tr('sidebar_segment_count', count=len(self.project.segments))
+                + f"  ·  {int(self.project.duration // 60):02d}:{int(self.project.duration % 60):02d}"
+            )
+        else:
+            self.sidebar_project_name.setText(self.tr('sidebar_no_video'))
+            self.sidebar_project_details.setText(self.tr('sidebar_import_hint'))
+
+    def apply_language(self):
+        self.workspace_title.setText(self.tr('workspace_title'))
+        self.sidebar_tagline.setText(self.tr('sidebar_tagline'))
+        self.sidebar_project_caption.setText(self.tr('sidebar_project_title'))
+        self.sidebar_nav_caption.setText(self.tr('sidebar_workspace'))
+        self.sidebar_guide_title.setText(self.tr('sidebar_shortcuts_title'))
+        for button, key in zip(self.sidebar_nav, self.sidebar_nav_keys):
+            button.setText('  ' + self.tr(key))
+        self.sidebar_shortcuts.setText(
+            f"{self.shortcut_text('mark')}  ·  {self.tr('sidebar_mark')}\n"
+            f"{self.shortcut_text('record')}  ·  {self.tr('sidebar_record')}\n"
+            f"{self.shortcut_text('play')}  ·  {self.tr('sidebar_play')}"
+        )
+        self.refresh_sidebar_project_info()
+        self.help_btn.setToolTip(self.tr('tutorial_button'))
+        self.help_btn.setAccessibleName(self.tr('tutorial_button'))
         self.open_btn.setToolTip(self.tr('open_project') + ' · ' + self.shortcut_text('open'))
         self.open_btn.setAccessibleName(self.tr('open_project'))
         self.close_project_btn.setText(self.tr('close_project'))
@@ -1531,9 +1639,9 @@ class Window(QMainWindow):
         self.close_project_btn.setAccessibleName(self.tr('close_project'))
         self.import_btn.setText(self.tr('import_video'))
         self.empty.setText(self.tr('import_video') + '\nMP4 · MOV · MKV · WEBM')
-        self.video_header.setText({'pt': 'VÍDEO ORIGINAL', 'en': 'SOURCE VIDEO', 'ja': '元の動画'}.get(self.ui_language, 'VÍDEO ORIGINAL'))
-        self.original_heading.setText({'pt': 'FAIXA ORIGINAL  ·  Arraste as agulhas numeradas para ajustar os trechos', 'en': 'SOURCE TRACK  ·  Drag numbered markers to adjust segments', 'ja': '元の音声  ·  数字付きのマーカーをドラッグして調整'}.get(self.ui_language, 'FAIXA ORIGINAL'))
-        self.dub_heading.setText({'pt': 'SUA GRAVAÇÃO', 'en': 'YOUR RECORDING', 'ja': '録音'}.get(self.ui_language, 'SUA GRAVAÇÃO'))
+        self.video_header.setText(self.tr('sidebar_video_heading'))
+        self.original_heading.setText(self.tr('sidebar_original_heading'))
+        self.dub_heading.setText(self.tr('sidebar_dub_heading'))
         self.theme_btn.setToolTip(self.tr('theme'))
         self.options_btn.setToolTip(self.tr('preferences'))
         self.restart_btn.setToolTip(self.tr('restart'))
@@ -1899,14 +2007,7 @@ class Window(QMainWindow):
     def set_enabled(self):
         has_project = bool(self.project)
         if hasattr(self, 'sidebar_project_name'):
-            if has_project:
-                self.sidebar_project_name.setText(Path(self.project.video).name if self.project.video else 'Projeto sem vídeo')
-                self.sidebar_project_details.setText(
-                    f'{len(self.project.segments)} trechos  ·  {int(self.project.duration // 60):02d}:{int(self.project.duration % 60):02d}'
-                )
-            else:
-                self.sidebar_project_name.setText('Nenhum vídeo aberto')
-                self.sidebar_project_details.setText('Importe um vídeo para começar.')
+            self.refresh_sidebar_project_info()
         has_chapters = bool(self.project and self.project.segments)
         rec = bool(self.recording)
         transcribing = bool(self.transcription_worker and self.transcription_worker.isRunning())
@@ -3278,7 +3379,7 @@ class Window(QMainWindow):
             self.schedule_history()
         else:
             (self.project.root / self.pending_take).unlink(missing_ok=True)
-            self.error(r.error or 'O microfone não enviou áudio.')
+            self.error(r.error or self.tr('mic_no_audio'))
         self.pending_take = None
         self.dub.live = []
         self.dub.update()
@@ -3307,7 +3408,7 @@ class Window(QMainWindow):
             self.setWindowTitle('DubStudio')
             if after:
                 after()
-        self.job('Salvando projeto com vídeo e gravações…', lambda _: core.save_project(project, path), done)
+        self.job(self.tr('saving_project_media'), lambda _: core.save_project(project, path), done)
 
     def open_project(self):
         if not self.can_replace():
@@ -3416,6 +3517,8 @@ class Window(QMainWindow):
         note = QLabel(self.tr('prefs_note'))
         note.setWordWrap(True); f.addRow(note)
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        bb.button(QDialogButtonBox.Ok).setText(self.tr('dialog_ok'))
+        bb.button(QDialogButtonBox.Cancel).setText(self.tr('dialog_cancel'))
         bb.accepted.connect(d.accept); bb.rejected.connect(d.reject); f.addRow(bb)
         if d.exec() == QDialog.Accepted:
             self.device = devices.currentData()

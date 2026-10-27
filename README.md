@@ -1,4 +1,4 @@
-# DubStudio v1.2.0
+# DubStudio v1.3.0
 
 Free desktop dubbing editor for macOS and Windows. Built from the DubStudio v1.0.1 editable source (Oct 23, 2026).
 
@@ -39,3 +39,8 @@ Imports video, supports SRT/VTT/ASS/SSA structures, manual chapter markers, micr
 ## Source and compatibility
 
 Qt (PySide6) desktop UI. This update deliberately preserves the existing project storage and core audio rendering. Keep a backup of important projects before trying a new build.
+
+
+## DubStudio v1.3.0 — Refined desktop look
+
+Atualização **apenas de interface**: navegação lateral para as áreas existentes, informações passivas do projeto, cartões arredondados, sombras discretas, superfícies claras e acento rosa. Importação de vídeo, editor, gravação, exportação, transcrição e atalhos mantêm os mesmos comandos.

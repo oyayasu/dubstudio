@@ -493,7 +493,9 @@ class RoundRecordButton(QPushButton):
         else:
             fill = '#e83d79' if not dark else '#e56599'
         painter.setBrush(QColor(fill))
-        painter.drawEllipse(QRectF(1.5, 1.5, self.width() - 3, self.height() - 3))
+        diameter = max(4.0, float(min(self.width(), self.height()) - 3))
+        cx, cy = self.width() / 2.0, self.height() / 2.0
+        painter.drawEllipse(QRectF(cx - diameter / 2, cy - diameter / 2, diameter, diameter))
         mark = self.icon()
         if not mark.isNull():
             pixmap = mark.pixmap(self.iconSize(), QIcon.Normal)
@@ -503,7 +505,7 @@ class RoundRecordButton(QPushButton):
         if self.hasFocus():
             painter.setBrush(Qt.NoBrush)
             painter.setPen(QPen(QColor('#ffffff'), 1.5))
-            painter.drawEllipse(QRectF(4.5, 4.5, self.width() - 9, self.height() - 9))
+            painter.drawEllipse(QRectF(cx - diameter / 2 + 3, cy - diameter / 2 + 3, diameter - 6, diameter - 6))
         painter.end()
 
 

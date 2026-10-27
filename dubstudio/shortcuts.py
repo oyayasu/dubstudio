@@ -5,8 +5,6 @@ initialising audio/video or a graphical session.
 """
 from __future__ import annotations
 
-from collections import Counter
-
 # Qt's portable names are used intentionally. On macOS, Ctrl in a QKeySequence
 # is presented/mapped as Command according to Qt's platform conventions.
 DEFAULT_SHORTCUTS = {

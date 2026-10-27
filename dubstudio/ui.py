@@ -16,7 +16,7 @@ from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.3.1'
+BUILD_VERSION = '1.3.2'
 
 
 I18N = {
@@ -474,6 +474,37 @@ def icon(kind, color='#687080'):
             p.drawLine(a, b, c, d)
     p.end()
     return QIcon(pm)
+
+
+
+class RoundRecordButton(QPushButton):
+    """Draw the microphone button as a true circle on Windows and macOS."""
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        dark = bool(self.property('record_dark'))
+        if not self.isEnabled():
+            fill = '#705268' if dark else '#e6a7c2'
+        elif self.isDown():
+            fill = '#ba275f' if not dark else '#c94c85'
+        elif self.underMouse():
+            fill = '#d82d6a' if not dark else '#ef7daf'
+        else:
+            fill = '#e83d79' if not dark else '#e56599'
+        painter.setBrush(QColor(fill))
+        painter.drawEllipse(QRectF(1.5, 1.5, self.width() - 3, self.height() - 3))
+        mark = self.icon()
+        if not mark.isNull():
+            pixmap = mark.pixmap(self.iconSize(), QIcon.Normal)
+            x = (self.width() - pixmap.width()) // 2
+            y = (self.height() - pixmap.height()) // 2
+            painter.drawPixmap(x, y, pixmap)
+        if self.hasFocus():
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(QColor('#ffffff'), 1.5))
+            painter.drawEllipse(QRectF(4.5, 4.5, self.width() - 9, self.height() - 9))
+        painter.end()
 
 
 class ResizeGrip(QWidget):
@@ -1406,7 +1437,7 @@ class Window(QMainWindow):
         self.save_btn = self.button('save', self.tr('save'), self.save_project)
         foot.addWidget(self.save_btn)
         foot.addStretch()
-        self.record_btn = self.button('mic', self.tr('record'), self.record)
+        self.record_btn = self.button('mic', self.tr('record'), self.record, circular=True)
         self.record_btn.setObjectName('record')
         self.record_btn.setFixedSize(58, 58)
         self.record_btn.setIconSize(QSize(29, 29))
@@ -1520,8 +1551,8 @@ class Window(QMainWindow):
         self.manual_start_btn.setText(self.tr('manual_start')); self.manual_end_btn.setText(self.tr('manual_end')); self.manual_cancel_btn.setText(self.tr('manual_cancel'))
         self.refresh_part_combo()
 
-    def button(self, kind, tip, fn):
-        b = QPushButton()
+    def button(self, kind, tip, fn, circular=False):
+        b = RoundRecordButton() if circular else QPushButton()
         b.setProperty('icon_kind', kind)
         b.setIcon(icon(kind))
         b.setIconSize(QSize(24, 24))
@@ -1650,6 +1681,8 @@ class Window(QMainWindow):
         QMenu::item {{ padding: 9px 22px; border-radius: 9px; }}
         QDialogButtonBox QPushButton {{ padding-left: 20px; padding-right: 20px; }}
         """)
+        self.record_btn.setProperty('record_dark', self.dark)
+        self.record_btn.update()
         for button in self.findChildren(QPushButton):
             kind = button.property('icon_kind')
             if kind:

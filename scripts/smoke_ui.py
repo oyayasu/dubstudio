@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from PySide6.QtWidgets import QApplication
-from dubstudio.ui import Window, ModernDialog
+from dubstudio.ui import Window, ModernDialog, RoundRecordButton
 
 app = QApplication([])
 app.setApplicationName('DubStudio')
@@ -16,6 +16,10 @@ app.processEvents()
 assert not w.dark, 'The redesigned app should launch in light mode on a clean profile'
 assert w.original.handle_at is not None
 assert w.empty.objectName() == 'emptyState'
+assert isinstance(w.record_btn, RoundRecordButton), 'Recording control must use the circular painted widget'
+assert w.record_btn.width() == w.record_btn.height(), 'The record button must remain square in dimensions'
+image = w.record_btn.grab().toImage()
+assert image.pixelColor(image.width() // 2, image.height() // 2) != image.pixelColor(0, 0), 'Circle must be visibly different from its corners'
 assert not w.empty.icon().isNull(), 'The import action must have a vector plus icon'
 assert not any(g in w.empty.text() for g in ('＋', '□', '�')), 'No missing-glyph-prone symbols in import placeholder'
 assert 'Importar vídeo' in w.empty.text()

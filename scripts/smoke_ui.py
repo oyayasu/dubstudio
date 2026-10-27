@@ -16,6 +16,9 @@ app.processEvents()
 assert not w.dark, 'The redesigned app should launch in light mode on a clean profile'
 assert w.original.handle_at is not None
 assert w.empty.objectName() == 'emptyState'
+assert not w.empty.icon().isNull(), 'The import action must have a vector plus icon'
+assert not any(g in w.empty.text() for g in ('＋', '□', '�')), 'No missing-glyph-prone symbols in import placeholder'
+assert 'Importar vídeo' in w.empty.text()
 d = ModernDialog(w)
 d.setWindowTitle('Keyboard shortcuts')
 assert d.heading.text() == 'Keyboard shortcuts'

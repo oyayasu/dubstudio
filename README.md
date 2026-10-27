@@ -1,4 +1,4 @@
-# DubStudio v1.3.1
+# DubStudio v1.3.2
 
 Free desktop dubbing editor for macOS and Windows. Built from the DubStudio v1.0.1 editable source (Oct 23, 2026).
 

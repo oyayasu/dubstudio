@@ -16,7 +16,7 @@ from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.2.0'
+BUILD_VERSION = '1.3.0'
 
 
 I18N = {
@@ -654,15 +654,15 @@ class Timeline(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        bg = QColor('#252933' if self.dark else '#ffffff')
-        line = QColor('#343c4c' if self.dark else '#e5e8f1')
+        bg = QColor('#222838' if self.dark else '#ffffff')
+        line = QColor('#343c4c' if self.dark else '#e8eaf2')
         top = 40 if not self.dub else 10
         h = max(54, self.height() - top - 16)
         p.setPen(QPen(line, 1)); p.setBrush(bg)
         p.drawRoundedRect(QRectF(2, top, self.width() - 4, h), 24, 24)
         if not self.project:
             return
-        color = QColor('#b6a9fa' if self.dub else ('#94a4ba' if self.dark else '#8794ad'))
+        color = QColor('#b9a6f4' if self.dub else ('#a6bedb' if self.dark else '#91ace7'))
         view_a, view_b = self.view_bounds()
 
         def wave(values, start, end):
@@ -701,8 +701,8 @@ class Timeline(QWidget):
             left_t = self.time_at(event.rect().left() - 20)
             right_t = self.time_at(event.rect().right() + 20)
             tick = math.floor(left_t / minor) * minor
-            minor_pen = QColor('#667080' if self.dark else '#aeb4c0')
-            major_pen = QColor('#a9afba' if self.dark else '#707785')
+            minor_pen = QColor('#667080' if self.dark else '#d2d8e6')
+            major_pen = QColor('#a9afba' if self.dark else '#8290a6')
             while tick <= right_t + minor:
                 xx = self.x(tick)
                 is_major = abs((tick / major) - round(tick / major)) < 1e-5
@@ -726,9 +726,9 @@ class Timeline(QWidget):
                     if view_a <= t <= view_b:
                         xx = self.x(t)
                         style = Qt.SolidLine if implicit else Qt.DashLine
-                        p.setPen(QPen(QColor('#a991e6'), 1.5, style))
+                        p.setPen(QPen(QColor('#9376ea'), 1.5, style))
                         p.drawLine(int(xx), top - 4, int(xx), top + h)
-                        p.setBrush(QColor('#a991e6')); p.setPen(Qt.NoPen)
+                        p.setBrush(QColor('#9376ea')); p.setPen(Qt.NoPen)
                         p.drawEllipse(QRectF(xx - 6, top - 10, 12, 12))
                         p.setPen(QColor('#ffffff')); p.setFont(QFont('Segoe UI', 7))
                         p.drawText(QRectF(xx - 7, top - 11, 14, 14), Qt.AlignCenter, str(n))
@@ -740,9 +740,9 @@ class Timeline(QWidget):
                                 if view_a - .001 <= seg.start <= view_b + .001)
                 if not has_start:
                     xx = self.x(view_a)
-                    p.setPen(QPen(QColor('#a991e6'), 1.5, Qt.SolidLine))
+                    p.setPen(QPen(QColor('#9376ea'), 1.5, Qt.SolidLine))
                     p.drawLine(int(xx), top - 4, int(xx), top + h)
-                    p.setBrush(QColor('#a991e6')); p.setPen(Qt.NoPen)
+                    p.setBrush(QColor('#9376ea')); p.setPen(Qt.NoPen)
                     p.drawEllipse(QRectF(xx - 6, top - 10, 12, 12))
                     p.setPen(QColor('#ffffff')); p.setFont(QFont('Segoe UI', 7))
                     p.drawText(QRectF(xx - 7, top - 11, 14, 14), Qt.AlignCenter, '1')
@@ -752,7 +752,7 @@ class Timeline(QWidget):
             active_idx = self.active if self.active in visible else visible[0]
             s = self.project.segments[active_idx]
             a, b = self.x(s.start), self.x(s.end)
-            p.setPen(Qt.NoPen); p.setBrush(QColor('#28b297fa'))
+            p.setPen(Qt.NoPen); p.setBrush(QColor(224, 87, 139, 30))
             p.drawRoundedRect(QRectF(a, top + 1, max(2, b - a), h - 2), 10, 10)
             if self.dub and self.live and active_idx == self.active:
                 wave(self.live, s.start, min(s.end, s.start + self.live_seconds))
@@ -767,7 +767,7 @@ class Timeline(QWidget):
                 p.drawLine(int(xx), top, int(xx), top + h)
                 if not self.dub:
                     if active:
-                        p.setBrush(QColor('#a991e6')); p.setPen(Qt.NoPen)
+                        p.setBrush(QColor('#9376ea')); p.setPen(Qt.NoPen)
                         p.drawEllipse(QRectF(xx - 11, 5, 22, 22))
                         p.setPen(QColor('#ffffff')); p.setFont(QFont('Segoe UI', 9))
                         p.drawText(QRectF(xx - 11, 5, 22, 22), Qt.AlignCenter, str(self.chapter_number(i)))
@@ -782,7 +782,7 @@ class Timeline(QWidget):
                 start_x, end_x = self.x(s.start), self.x(s.end)
                 nxt = self.project.segments[self.active + 1] if self.active + 1 < len(self.project.segments) and self.project.segments[self.active + 1].part_id == s.part_id else None
                 shared_end = bool(nxt and abs(nxt.start - s.end) < .006)
-                p.setPen(QPen(QColor('#a991e6'), 2)); p.setBrush(QColor('#a991e6'))
+                p.setPen(QPen(QColor('#9376ea'), 2)); p.setBrush(QColor('#9376ea'))
                 # The numbered start badge itself is the start handle. If the next segment begins
                 # exactly at the end, that next numbered badge is the shared boundary, so do not
                 # paint a second end needle on top of it.
@@ -997,9 +997,9 @@ class ModernDialog(QDialog):
         self.panel.setObjectName('dialogSurface')
         shell.addWidget(self.panel)
         shadow = QGraphicsDropShadowEffect(self.panel)
-        shadow.setBlurRadius(36)
-        shadow.setColor(QColor(20, 31, 60, 42))
-        shadow.setOffset(0, 9)
+        shadow.setBlurRadius(45)
+        shadow.setColor(QColor(39, 51, 85, 53))
+        shadow.setOffset(0, 13)
         self.panel.setGraphicsEffect(shadow)
         panel_layout = QVBoxLayout(self.panel)
         panel_layout.setContentsMargins(22, 15, 22, 20)
@@ -1008,6 +1008,17 @@ class ModernDialog(QDialog):
         self.header.setObjectName('dialogHeader')
         header_row = QHBoxLayout(self.header)
         header_row.setContentsMargins(2, 0, 0, 6)
+        traffic = QWidget()
+        traffic.setObjectName('trafficLights')
+        traffic_row = QHBoxLayout(traffic)
+        traffic_row.setContentsMargins(0, 0, 14, 0)
+        traffic_row.setSpacing(6)
+        for name in ('trafficRed', 'trafficYellow', 'trafficGreen'):
+            dot = QLabel('')
+            dot.setObjectName(name)
+            dot.setFixedSize(10, 10)
+            traffic_row.addWidget(dot)
+        header_row.addWidget(traffic)
         self.heading = QLabel()
         self.heading.setObjectName('dialogTitle')
         header_row.addWidget(self.heading)
@@ -1121,14 +1132,94 @@ class Window(QMainWindow):
         outer = QWidget()
         outer.setObjectName('centralCanvas')
         self.setCentralWidget(outer)
-        layout = QVBoxLayout(outer)
-        layout.setContentsMargins(26, 16, 26, 22)
-        layout.setSpacing(12)
+        shell = QHBoxLayout(outer)
+        shell.setContentsMargins(16, 16, 16, 16)
+        shell.setSpacing(14)
+
+        self.sidebar = QFrame()
+        self.sidebar.setObjectName('workspaceSidebar')
+        self.sidebar.setFixedWidth(232)
+        side = QVBoxLayout(self.sidebar)
+        side.setContentsMargins(18, 20, 18, 20)
+        side.setSpacing(13)
+        brand_row = QHBoxLayout()
+        brand_row.setSpacing(9)
+        self.brand_logo = QLabel('◉')
+        self.brand_logo.setObjectName('brandLogo')
+        self.brand_logo.setFixedSize(37, 37)
+        self.brand_logo.setAlignment(Qt.AlignCenter)
+        brand_row.addWidget(self.brand_logo)
+        self.brand_sidebar_name = QLabel('DubStudio')
+        self.brand_sidebar_name.setObjectName('sidebarBrand')
+        brand_row.addWidget(self.brand_sidebar_name)
+        brand_row.addStretch()
+        side.addLayout(brand_row)
+        sidebar_tagline = QLabel('CREATIVE AUDIO WORKSPACE')
+        sidebar_tagline.setObjectName('sidebarEyebrow')
+        side.addWidget(sidebar_tagline)
+        side.addSpacing(18)
+
+        project_caption = QLabel('SEU PROJETO')
+        project_caption.setObjectName('sidebarEyebrow')
+        side.addWidget(project_caption)
+        self.sidebar_project = QFrame()
+        self.sidebar_project.setObjectName('sidebarProject')
+        project_card = QVBoxLayout(self.sidebar_project)
+        project_card.setContentsMargins(14, 13, 14, 14)
+        project_card.setSpacing(6)
+        self.sidebar_project_name = QLabel('Nenhum vídeo aberto')
+        self.sidebar_project_name.setObjectName('sidebarProjectName')
+        self.sidebar_project_name.setWordWrap(True)
+        self.sidebar_project_details = QLabel('Importe um vídeo para começar.')
+        self.sidebar_project_details.setObjectName('sidebarProjectDetails')
+        self.sidebar_project_details.setWordWrap(True)
+        project_card.addWidget(self.sidebar_project_name)
+        project_card.addWidget(self.sidebar_project_details)
+        side.addWidget(self.sidebar_project)
+        side.addSpacing(14)
+
+        nav_caption = QLabel('ESPAÇO DE TRABALHO')
+        nav_caption.setObjectName('sidebarEyebrow')
+        side.addWidget(nav_caption)
+        self.sidebar_nav = []
+        for text in ('Vídeo original', 'Áudio original', 'Sua gravação'):
+            nav = QPushButton('  ' + text)
+            nav.setObjectName('sidebarNav')
+            nav.setCursor(Qt.PointingHandCursor)
+            nav.setProperty('selected', len(self.sidebar_nav) == 0)
+            side.addWidget(nav)
+            self.sidebar_nav.append(nav)
+        side.addStretch(1)
+        hints = QFrame()
+        hints.setObjectName('sidebarHint')
+        hints_layout = QVBoxLayout(hints)
+        hints_layout.setContentsMargins(13, 14, 13, 14)
+        hints_layout.setSpacing(7)
+        guide_title = QLabel('ATALHOS RÁPIDOS')
+        guide_title.setObjectName('sidebarEyebrow')
+        hints_layout.addWidget(guide_title)
+        self.sidebar_shortcuts = QLabel('M  ·  Marcar trecho\nR  ·  Gravar\nEspaço  ·  Reproduzir')
+        self.sidebar_shortcuts.setObjectName('sidebarProjectDetails')
+        hints_layout.addWidget(self.sidebar_shortcuts)
+        side.addWidget(hints)
+        shadow_sidebar = QGraphicsDropShadowEffect(self.sidebar)
+        shadow_sidebar.setBlurRadius(28)
+        shadow_sidebar.setOffset(0, 5)
+        shadow_sidebar.setColor(QColor(45, 60, 90, 20))
+        self.sidebar.setGraphicsEffect(shadow_sidebar)
+        shell.addWidget(self.sidebar)
+
+        workspace = QWidget()
+        workspace.setObjectName('workspaceCanvas')
+        shell.addWidget(workspace, 1)
+        layout = QVBoxLayout(workspace)
+        layout.setContentsMargins(12, 5, 10, 10)
+        layout.setSpacing(14)
 
         top = QHBoxLayout()
         top.setSpacing(10)
         layout.addLayout(top)
-        brand = QLabel('DubStudio')
+        brand = QLabel('Seu estúdio de dublagem')
         brand.setObjectName('brandTitle')
         top.addWidget(brand)
         top.addSpacing(14)
@@ -1161,8 +1252,8 @@ class Window(QMainWindow):
         self.body = body
         self.page.setWidget(body)
         stack = QVBoxLayout(body)
-        stack.setContentsMargins(0, 8, 0, 12)
-        stack.setSpacing(10)
+        stack.setContentsMargins(2, 8, 6, 16)
+        stack.setSpacing(13)
 
         self.video_box = QFrame()
         self.video_box.setObjectName('videoBox')
@@ -1344,6 +1435,10 @@ class Window(QMainWindow):
         stack.addWidget(self.track_scroll[1])
         stack.addStretch()
 
+        # Sidebar jumps to the original video/timeline widgets; editing flow is unchanged.
+        for item, target in zip(self.sidebar_nav, (self.video_box, self.track_scroll[0], self.track_scroll[1])):
+            item.clicked.connect(lambda _checked=False, t=target: self.page.ensureWidgetVisible(t, 0, 34))
+
         self.reference.hide()
         self.ref_tools.hide()
         self.structure_box.hide()
@@ -1377,6 +1472,12 @@ class Window(QMainWindow):
         return text.format(**kwargs) if kwargs else text
 
     def apply_language(self):
+        if hasattr(self, 'sidebar_shortcuts'):
+            self.sidebar_shortcuts.setText(
+                f"{self.shortcut_text('mark')}  ·  Marcar trecho\n"
+                f"{self.shortcut_text('record')}  ·  Gravar\n"
+                f"{self.shortcut_text('play')}  ·  Reproduzir"
+            )
         self.open_btn.setToolTip(self.tr('open_project') + ' · ' + self.shortcut_text('open'))
         self.open_btn.setAccessibleName(self.tr('open_project'))
         self.close_project_btn.setText(self.tr('close_project'))
@@ -1695,6 +1796,15 @@ class Window(QMainWindow):
 
     def set_enabled(self):
         has_project = bool(self.project)
+        if hasattr(self, 'sidebar_project_name'):
+            if has_project:
+                self.sidebar_project_name.setText(Path(self.project.video).name if self.project.video else 'Projeto sem vídeo')
+                self.sidebar_project_details.setText(
+                    f'{len(self.project.segments)} trechos  ·  {int(self.project.duration // 60):02d}:{int(self.project.duration % 60):02d}'
+                )
+            else:
+                self.sidebar_project_name.setText('Nenhum vídeo aberto')
+                self.sidebar_project_details.setText('Importe um vídeo para começar.')
         has_chapters = bool(self.project and self.project.segments)
         rec = bool(self.recording)
         transcribing = bool(self.transcription_worker and self.transcription_worker.isRunning())
@@ -3140,7 +3250,7 @@ class Window(QMainWindow):
         d = ModernDialog(self)
         d.setWindowTitle(self.tr('prefs_title'))
         d.setSizeGripEnabled(True)
-        d.resize(620, 470)
+        d.resize(660, 540)
         f = QFormLayout(d.body)
 
         ui_lang = QComboBox()

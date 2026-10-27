@@ -20,5 +20,8 @@ d = ModernDialog(w)
 d.setWindowTitle('Keyboard shortcuts')
 assert d.heading.text() == 'Keyboard shortcuts'
 assert w.video_box.height() >= 300
+assert w.sidebar.objectName() == 'workspaceSidebar'
+assert len(w.sidebar_nav) == 3
+assert w.sidebar_project_name.text() == 'Nenhum vídeo aberto'
 w.close()
 print('Qt UI smoke test passed')

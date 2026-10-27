@@ -24,7 +24,10 @@ jobs:
           sudo apt-get install -y xvfb libxcb-cursor0 libgl1 libegl1 libopengl0 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libpulse0 libasound2t64 libgstreamer1.0-0 libportaudio2
           python -m pip install -r requirements.txt pillow
       - name: Render actual UI using Xvfb
-        run: xvfb-run -a -s '-screen 0 1600x950x24' python scripts/capture_ui.py
+        run: python scripts/capture_ui.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
       - uses: actions/upload-artifact@v4
         with:
           name: DubStudio-UI-Preview

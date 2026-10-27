@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.spec
+build/
+dist/
+.DS_Store
+assets/*.icns
+assets/*.ico
+assets/*.iconset/

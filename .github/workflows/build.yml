@@ -1,0 +1,78 @@
+name: Build DubStudio
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install lightweight test dependencies
+        run: python -m pip install numpy==2.2.4 soundfile==0.13.1 imageio-ffmpeg==0.6.0
+      - name: Test project formats and keyboard config
+        run: python -m unittest discover -s tests -v
+      - name: Static syntax check
+        run: python -m compileall -q dubstudio main.py scripts
+
+  windows:
+    name: Windows x64 portable
+    needs: tests
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+          cache: pip
+      - run: python -m pip install -r requirements-build.txt pillow
+      - run: python scripts/build.py
+      - name: Zip Windows application
+        shell: pwsh
+        run: Compress-Archive -Path dist/DubStudio -DestinationPath DubStudio-1.1.0-Windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DubStudio-Windows-x64
+          path: DubStudio-1.1.0-Windows-x64.zip
+          if-no-files-found: error
+
+  mac:
+    name: macOS ${{ matrix.arch }} DMG
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: Apple-Silicon
+          - runner: macos-15-intel
+            arch: Intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install -r requirements-build.txt pillow
+      - run: python scripts/build.py
+      - name: Create macOS disk image
+        run: hdiutil create -volname DubStudio -srcfolder dist/DubStudio.app -ov -format UDZO 'DubStudio-1.1.0-macOS-${{ matrix.arch }}.dmg'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DubStudio-macOS-${{ matrix.arch }}
+          path: DubStudio-1.1.0-macOS-${{ matrix.arch }}.dmg
+          if-no-files-found: error

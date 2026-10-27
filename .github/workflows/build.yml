@@ -76,9 +76,9 @@ jobs:
         run: python scripts/smoke_ui.py
       - run: python scripts/build.py
       - name: Create macOS disk image
-        run: hdiutil create -volname DubStudio -srcfolder dist/DubStudio.app -ov -format UDZO 'DubStudio-1.2.0-macOS-${{ matrix.arch }}.dmg'
+        run: hdiutil create -volname DubStudio -srcfolder dist/DubStudio.app -ov -format UDZO 'DubStudio-1.3.0-macOS-${{ matrix.arch }}.dmg'
       - uses: actions/upload-artifact@v4
         with:
           name: DubStudio-macOS-${{ matrix.arch }}
-          path: DubStudio-1.2.0-macOS-${{ matrix.arch }}.dmg
+          path: DubStudio-1.3.0-macOS-${{ matrix.arch }}.dmg
           if-no-files-found: error

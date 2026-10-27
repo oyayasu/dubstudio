@@ -1,8 +1,10 @@
-# DubStudio v1.3.0
+# DubStudio v1.3.1
 
 Free desktop dubbing editor for macOS and Windows. Built from the DubStudio v1.0.1 editable source (Oct 23, 2026).
 
 ## Improvements
+
+- Replaced the unsupported fullwidth plus text symbol on the import-video placeholder with a crisp, painter-rendered Qt icon.
 
 - Editable keyboard shortcuts under **Preferences > Keyboard shortcuts > Customize**.
 - Original presets retained, restore button, duplicate checking, and persistent custom combinations.

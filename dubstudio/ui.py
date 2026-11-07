@@ -2035,14 +2035,8 @@ class Window(QMainWindow):
         self.video_viewer.setFixedSize(fitted_w, fitted_h)
         self.empty.setFixedSize(fitted_w, fitted_h)
         self.video.setFixedSize(fitted_w, fitted_h)
-        radius = 20
-        path = QPainterPath()
-        path.addRoundedRect(QRectF(0, 0, fitted_w, fitted_h), radius, radius)
-        polygon = path.toFillPolygon().toPolygon()
-        region = QRegion(polygon)
-        self.video_viewer.setMask(region)
-        self.video.setMask(region)
-        self.empty.setMask(region)
+        # Qt stylesheet rounding keeps the placeholder smooth without generating
+        # a polygon mask every resize (which can produce dotted artifacts on macOS).
         if self.transcription_status.isVisible():
             size = self.transcription_status.sizeHint()
             size.setWidth(min(max(size.width(), 220), max(220, self.video_box.width() - 40)))

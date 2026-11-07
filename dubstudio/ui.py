@@ -1681,33 +1681,25 @@ class Window(QMainWindow):
 
         # Chapter creation and Part editing are exposed by the timeline context menu.
 
-        # Primary project controls sit immediately above the reference field.
-        self.project_controls = QWidget()
-        foot = QHBoxLayout(self.project_controls)
-        foot.setContentsMargins(0, 4, 0, 4)
-        self.save_btn = self.button('save', self.tr('save'), self.save_project)
-        foot.addWidget(self.save_btn)
-        foot.addStretch()
-        self.record_btn = self.button('mic', self.tr('record'), self.record, circular=True)
-        self.record_btn.setObjectName('record')
-        self.record_btn.setFixedSize(58, 58)
-        self.record_btn.setIconSize(QSize(29, 29))
-        foot.addWidget(self.record_btn)
-        foot.addStretch()
-        self.export_btn = self.button('export', self.tr('export'), self.export)
-        foot.addWidget(self.export_btn)
-        stack.addWidget(self.project_controls)
-
+        # The real reference editor and microphone control live in a dedicated inspector.
+        # Existing recording, project save, transcribe, and subtitle handlers remain unchanged.
+        self.reference_heading = QLabel(self.tr('reference_panel'))
+        self.reference_heading.setObjectName('panelHeading')
+        self.reference_card_layout.addWidget(self.reference_heading)
         self.ref_tools = QWidget()
         refrow = QHBoxLayout(self.ref_tools)
         refrow.setContentsMargins(0, 0, 0, 0)
         refrow.addStretch()
-        self.ref_btn = QPushButton(self.tr('import_reference'))
+        self.ref_btn = MotionButton(self.tr('import_reference'))
+        self.ref_btn.setMotionEnabled(self.animations_enabled)
+        self.ref_btn.setObjectName('referenceAction')
+        self.ref_btn.setProperty('icon_kind', 'file_text')
+        self.ref_btn.setIcon(icon('file_text'))
+        self.ref_btn.setIconSize(QSize(18, 18))
         self.ref_btn.setToolTip(self.tr('import_reference_tip'))
         self.ref_btn.clicked.connect(self.import_reference)
         refrow.addWidget(self.ref_btn)
-        refrow.addStretch()
-        stack.addWidget(self.ref_tools)
+        self.reference_card_layout.addWidget(self.ref_tools)
 
         self.reference = AutoGrowTextEdit()
         self.reference.setObjectName('reference')
@@ -1715,17 +1707,42 @@ class Window(QMainWindow):
         self.reference.textChanged.connect(self.reference_changed)
         self.reference.replaceRequested.connect(self.import_reference)
         self.reference.autoRequested.connect(self.use_auto_reference)
-        stack.addWidget(self.reference)
+        self.reference.setMaximumHeight(205)
+        self.reference_card_layout.addWidget(self.reference)
+        self.reference_card_layout.addStretch(1)
+
+        self.project_controls = QFrame()
+        self.project_controls.setObjectName('recordCard')
+        foot = QHBoxLayout(self.project_controls)
+        foot.setContentsMargins(10, 12, 10, 12)
+        foot.setSpacing(11)
+        self.record_btn = self.button('mic', self.tr('record'), self.record, circular=True)
+        self.record_btn.setObjectName('record')
+        self.record_btn.setFixedSize(62, 62)
+        self.record_btn.setIconSize(QSize(29, 29))
+        foot.addWidget(self.record_btn)
+        record_copy = QVBoxLayout()
+        record_copy.setSpacing(5)
+        self.record_heading = QLabel(self.tr('record_panel'))
+        self.record_heading.setObjectName('panelHeading')
+        record_copy.addWidget(self.record_heading)
+        self.record_hint = QLabel(self.tr('record_hint'))
+        self.record_hint.setObjectName('recordHint')
+        self.record_hint.setWordWrap(True)
+        record_copy.addWidget(self.record_hint)
+        foot.addLayout(record_copy, 1)
+        self.reference_card_layout.addWidget(self.project_controls)
+
         dub_heading = QLabel(self.tr('sidebar_dub_heading'))
         dub_heading.setObjectName('sectionHeading')
         self.dub_heading = dub_heading
-        stack.addWidget(dub_heading)
-        stack.addWidget(self.track_scroll[1])
+        self.timeline_layout.addWidget(dub_heading)
+        self.timeline_layout.addWidget(self.track_scroll[1])
         stack.addStretch()
 
         # Sidebar jumps to the original video/timeline widgets; editing flow is unchanged.
-        for item, target in zip(self.sidebar_nav, (self.video_box, self.track_scroll[0], self.track_scroll[1])):
-            item.clicked.connect(lambda _checked=False, t=target: self.scroll_to_workspace(t))
+        for item, target in zip(self.sidebar_nav, (self.video_card, self.track_scroll[0], self.track_scroll[1])):
+            item.clicked.connect(lambda _checked=False, t=target, n=item: self.navigate_workspace(n, t))
 
         self.reference.hide()
         self.ref_tools.hide()
@@ -1809,6 +1826,10 @@ class Window(QMainWindow):
         self.import_btn.setText(self.tr('import_video'))
         self.empty.setText(self.tr('import_video') + '\nMP4 · MOV · MKV · WEBM')
         self.video_header.setText(self.tr('sidebar_video_heading'))
+        self.reference_heading.setText(self.tr('reference_panel'))
+        self.record_heading.setText(self.tr('record_panel'))
+        self.record_hint.setText(self.tr('record_hint'))
+        self.timeline_title.setText(self.tr('timeline_panel'))
         self.original_heading.setText(self.tr('sidebar_original_heading'))
         self.dub_heading.setText(self.tr('sidebar_dub_heading'))
         self.theme_btn.setToolTip(self.tr('theme'))
@@ -1992,8 +2013,8 @@ class Window(QMainWindow):
         QTimer.singleShot(0, self.update_video_shape)
 
     def fit_video_size(self):
-        width = max(1, self.video_box.width())
-        height = max(1, self.video_box.height())
+        width = max(1, self.video_box.contentsRect().width() - 38)
+        height = max(1, self.video_box.contentsRect().height() - 24)
         ratio = self.video_ratio if self.video_ratio > 0 else 16 / 9
         fitted_w = width
         fitted_h = int(round(fitted_w / ratio))
@@ -2420,6 +2441,7 @@ class Window(QMainWindow):
         self.reference.setVisible(has_chapters)
         self.track_scroll[1].setVisible(has_chapters)
         self.project_controls.setVisible(has_project)
+        QTimer.singleShot(0, self.update_video_shape)
         if not has_chapters:
             self.ref_tools.hide()
         self.refresh_part_combo()

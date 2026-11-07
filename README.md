@@ -55,7 +55,7 @@ Imports video, supports SRT/VTT/ASS/SSA structures, manual chapter markers, micr
 
 ## Source and compatibility
 
-Qt (PySide6) desktop UI. This update deliberately preserves the existing project storage and core audio rendering. The checked-in legacy PNG is a fallback; builds generate the actual icon PNG from the new SVG master. Keep a backup of important projects before trying a new build.
+Qt (PySide6) desktop UI. This update deliberately preserves the existing project storage and core audio rendering. The SVG is the only icon master in the repository; builds generate the PNG, ICO and ICNS resources from it. Running from Python source uses the SVG directly. Keep a backup of important projects before trying a new build.
 
 
 ## DubStudio v1.3.0 — Refined desktop look

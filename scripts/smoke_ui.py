@@ -7,10 +7,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QSettings
-from dubstudio.ui import Window, ModernDialog, RoundRecordButton
+from dubstudio.ui import Window, ModernDialog, RoundRecordButton, MotionButton
 
 # Never open a modal first-run tutorial during unattended CI testing.
 QSettings('DubStudio', 'DubStudio').setValue('onboarding/v2/completed', True)
+QSettings('DubStudio', 'DubStudio').setValue('appearance/motion_enabled', True)
 app = QApplication([])
 app.setApplicationName('DubStudio')
 w = Window()
@@ -32,6 +33,17 @@ assert d.heading.text() == 'Keyboard shortcuts'
 assert w.video_box.height() >= 300
 assert w.sidebar.objectName() == 'workspaceSidebar'
 assert len(w.sidebar_nav) == 3
+assert all(isinstance(button, MotionButton) for button in w.sidebar_nav)
+assert not w.brand_logo.pixmap().isNull(), 'The new pastel app icon must render in the sidebar'
+assert w.animations_enabled, 'Smooth motion should be enabled by default'
+w.set_motion_enabled(False)
+assert not w.animations_enabled
+assert all(not button._motion_enabled for button in w.findChildren(MotionButton))
+w.scroll_to_workspace(w.video_box)
+assert w._scroll_animation is None or w._scroll_animation.state() == w._scroll_animation.Stopped
+w.set_motion_enabled(True)
+assert all(button._motion_enabled for button in w.findChildren(MotionButton))
+assert w.animations_enabled
 assert w.sidebar_project_name.text() == 'Nenhum vídeo aberto'
 # A language change must translate every visible sidebar label immediately.
 from types import SimpleNamespace

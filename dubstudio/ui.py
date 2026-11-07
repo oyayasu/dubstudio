@@ -2,12 +2,13 @@ from __future__ import annotations
 import os, shutil, sys, uuid, math, json
 from pathlib import Path
 import ctypes
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QUrl, QSize, QRectF, QSettings, QEvent
+from PySide6.QtCore import (Qt, QThread, Signal, QTimer, QUrl, QSize, QRect, QRectF,
+    QSettings, QEvent, Property, QPropertyAnimation, QAbstractAnimation, QEasingCurve)
 from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QIcon, QPixmap,
                            QKeySequence, QPainterPath, QRegion)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QFileDialog, QLabel, QLineEdit, QPlainTextEdit, QTextEdit, QScrollArea, QSlider,
-    QDialog, QFormLayout, QComboBox, QDoubleSpinBox, QDialogButtonBox, QMessageBox,
+    QDialog, QFormLayout, QComboBox, QDoubleSpinBox, QCheckBox, QDialogButtonBox, QMessageBox,
     QProgressDialog, QFrame, QSizePolicy, QStackedLayout, QMenu, QKeySequenceEdit, QGroupBox, QGraphicsDropShadowEffect)
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -16,7 +17,7 @@ from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.3.4'
+BUILD_VERSION = '1.4.0'
 
 
 I18N = {
@@ -468,6 +469,15 @@ WORKSPACE_I18N = {
 for _lang, _text in WORKSPACE_I18N.items():
     I18N[_lang].update(_text)
 
+# Optional visual motion. No project data or audio processing depends on this flag.
+MOTION_I18N = {
+    'pt': {'appearance': 'Aparência', 'motion': 'Animações suaves', 'motion_tip': 'Desative para reduzir repinturas e efeitos visuais.'},
+    'en': {'appearance': 'Appearance', 'motion': 'Smooth animations', 'motion_tip': 'Turn off to minimize redraws and visual effects.'},
+    'ja': {'appearance': '外観', 'motion': 'スムーズなアニメーション', 'motion_tip': '無効にすると画面の再描画と視覚効果を減らせます。'},
+}
+for _lang, _text in MOTION_I18N.items():
+    I18N[_lang].update(_text)
+
 MODEL_KEYS = {
     'tiny': ('model_tiny_name', 'model_tiny_desc'),
     'base': ('model_base_name', 'model_base_desc'),
@@ -561,21 +571,109 @@ def icon(kind, color='#687080'):
 
 
 
+class MotionButton(QPushButton):
+    """Small, GPU-free Qt Widgets hover transition; disabled mode does no animation."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._motion_enabled = True
+        self._hover_progress = 0.0
+        self._hover_anim = QPropertyAnimation(self, b'hoverProgress', self)
+        self._hover_anim.setDuration(175)
+        self._hover_anim.setEasingCurve(QEasingCurve.OutCubic)
+
+    def get_hover_progress(self):
+        return self._hover_progress
+
+    def set_hover_progress(self, value):
+        self._hover_progress = float(value)
+        self.update()
+
+    hoverProgress = Property(float, get_hover_progress, set_hover_progress)
+
+    def setMotionEnabled(self, enabled):
+        self._motion_enabled = bool(enabled)
+        self._hover_anim.stop()
+        self._hover_progress = float(self.underMouse()) if enabled else 0.0
+        self.update()
+
+    def _animate_hover(self, target):
+        if not self._motion_enabled:
+            return
+        self._hover_anim.stop()
+        self._hover_anim.setStartValue(self._hover_progress)
+        self._hover_anim.setEndValue(float(target))
+        self._hover_anim.start()
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._animate_hover(1.0)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._animate_hover(0.0)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._motion_enabled or self._hover_progress < .01 or not self.isEnabled():
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(161, 129, 224, round(15 * self._hover_progress)))
+        painter.drawRoundedRect(QRectF(self.rect()).adjusted(2, 2, -2, -2), 10, 10)
+        painter.end()
+
+
 class RoundRecordButton(QPushButton):
-    """Draw the microphone button as a true circle on Windows and macOS."""
+    """Native painter-based button with an optional lightweight recording pulse."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._pulse = 0.0
+        self._pulse_animation = QPropertyAnimation(self, b'pulse', self)
+        self._pulse_animation.setDuration(1100)
+        self._pulse_animation.setStartValue(0.0)
+        self._pulse_animation.setEndValue(1.0)
+        self._pulse_animation.setLoopCount(-1)
+        self._pulse_animation.setEasingCurve(QEasingCurve.InOutSine)
+
+    def get_pulse(self):
+        return self._pulse
+
+    def set_pulse(self, value):
+        self._pulse = float(value)
+        self.update()
+
+    pulse = Property(float, get_pulse, set_pulse)
+
+    def setRecordingActive(self, active, motion=True):
+        self._pulse_animation.stop()
+        self._pulse = 0.0
+        if active and motion:
+            self._pulse_animation.start()
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(Qt.NoPen)
         dark = bool(self.property('record_dark'))
         if not self.isEnabled():
-            fill = '#705268' if dark else '#e6a7c2'
+            fill = '#82769b' if dark else '#c4b5e4'
         elif self.isDown():
-            fill = '#ba275f' if not dark else '#c94c85'
+            fill = '#8d6ecb' if not dark else '#987ce1'
         elif self.underMouse():
-            fill = '#d82d6a' if not dark else '#ef7daf'
+            fill = '#a88bdc' if not dark else '#b8a1f2'
         else:
-            fill = '#e83d79' if not dark else '#e56599'
+            fill = '#b49ae8' if not dark else '#aa90e4'
+        if self._pulse_animation.state() == QAbstractAnimation.State.Running:
+            ring = QColor('#c4aaff')
+            ring.setAlpha(round(100 * (1.0 - self._pulse)))
+            painter.setPen(QPen(ring, 1.5 + 2 * self._pulse))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(QRectF(2 + 2 * self._pulse, 2 + 2 * self._pulse,
+                                      self.width() - 4 - 4 * self._pulse,
+                                      self.height() - 4 - 4 * self._pulse))
+            painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(fill))
         diameter = max(4.0, float(min(self.width(), self.height()) - 3))
         cx, cy = self.width() / 2.0, self.height() / 2.0
@@ -734,6 +832,20 @@ class Timeline(QWidget):
         if end <= start:
             return 0.0, max(.001, self.project.duration)
         return start, end
+
+    def set_playhead(self, position):
+        """Repaint only the old/new playhead strips during playback."""
+        previous = self.position
+        self.position = float(position)
+        if not self.project:
+            return
+        a, b = self.view_bounds()
+        span = max(.001, b - a)
+        width = self.width() - 36
+        for t in (previous, self.position):
+            if a <= t <= b:
+                x = int(18 + width * (t - a) / span)
+                self.update(QRect(x - 4, 0, 9, self.height()))
 
     def set_view(self, start=None, end=None):
         if not self.project:
@@ -1164,6 +1276,23 @@ class ModernDialog(QDialog):
         self.header.installEventFilter(self)
         self.heading.installEventFilter(self)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        parent = self.parent()
+        if parent is None or not getattr(parent, 'animations_enabled', False):
+            return
+        effect = QGraphicsOpacityEffect(self.body)
+        effect.setOpacity(0.0)
+        self.body.setGraphicsEffect(effect)
+        self._entrance_animation = QPropertyAnimation(effect, b'opacity', self)
+        self._entrance_animation.setDuration(230)
+        self._entrance_animation.setStartValue(0.0)
+        self._entrance_animation.setEndValue(1.0)
+        self._entrance_animation.setEasingCurve(QEasingCurve.OutCubic)
+        # Remove the compositing effect when the entrance is complete: no idle GPU/CPU cost.
+        self._entrance_animation.finished.connect(lambda: self.body.setGraphicsEffect(None))
+        self._entrance_animation.start()
+
     def setWindowTitle(self, text):
         super().setWindowTitle(text)
         if hasattr(self, 'heading'):
@@ -1209,6 +1338,8 @@ class Window(QMainWindow):
         # New appearance has its own setting: existing v1.1 dark preference does not
         # force the redesigned app to open dark on the first v1.2 launch.
         self.dark = self.settings.value('appearance/v2/dark', False, type=bool)
+        self.animations_enabled = self.settings.value('appearance/motion_enabled', True, type=bool)
+        self._scroll_animation = None
         self.device = None
         self.silence = .55
         self.threshold = -35.
@@ -1271,10 +1402,15 @@ class Window(QMainWindow):
         side.setSpacing(13)
         brand_row = QHBoxLayout()
         brand_row.setSpacing(9)
-        self.brand_logo = QLabel('◉')
+        self.brand_logo = QLabel()
         self.brand_logo.setObjectName('brandLogo')
-        self.brand_logo.setFixedSize(37, 37)
+        self.brand_logo.setFixedSize(42, 42)
         self.brand_logo.setAlignment(Qt.AlignCenter)
+        assets_root = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent)) / 'assets'
+        logo = QIcon(str(assets_root / 'dubstudio.svg'))
+        if logo.isNull():
+            logo = QIcon(str(assets_root / 'dubstudio.png'))
+        self.brand_logo.setPixmap(logo.pixmap(QSize(40, 40)))
         brand_row.addWidget(self.brand_logo)
         self.brand_sidebar_name = QLabel('DubStudio')
         self.brand_sidebar_name.setObjectName('sidebarBrand')
@@ -1311,7 +1447,8 @@ class Window(QMainWindow):
         self.sidebar_nav = []
         self.sidebar_nav_keys = ('sidebar_source_video', 'sidebar_source_audio', 'sidebar_your_recording')
         for key in self.sidebar_nav_keys:
-            nav = QPushButton('  ' + self.tr(key))
+            nav = MotionButton('  ' + self.tr(key))
+            nav.setMotionEnabled(self.animations_enabled)
             nav.setObjectName('sidebarNav')
             nav.setCursor(Qt.PointingHandCursor)
             nav.setProperty('selected', len(self.sidebar_nav) == 0)
@@ -1353,7 +1490,8 @@ class Window(QMainWindow):
         top.addSpacing(14)
         self.open_btn = self.button('folder', self.tr('open_project') + ' · ' + self.shortcut_text('open'), self.open_project)
         top.addWidget(self.open_btn)
-        self.close_project_btn = QPushButton(self.tr('close_project'))
+        self.close_project_btn = MotionButton(self.tr('close_project'))
+        self.close_project_btn.setMotionEnabled(self.animations_enabled)
         self.close_project_btn.setIcon(icon('close_project'))
         self.close_project_btn.setIconSize(QSize(20, 20))
         self.close_project_btn.setToolTip(self.tr('close_project') + ' · ' + self.shortcut_text('close'))
@@ -1361,7 +1499,8 @@ class Window(QMainWindow):
         self.close_project_btn.clicked.connect(self.close_project)
         self.close_project_btn.setEnabled(False)
         top.addWidget(self.close_project_btn)
-        self.import_btn = QPushButton(self.tr('import_video'))
+        self.import_btn = MotionButton(self.tr('import_video'))
+        self.import_btn.setMotionEnabled(self.animations_enabled)
         self.import_btn.clicked.connect(self.import_video)
         top.addWidget(self.import_btn)
         top.addStretch()
@@ -1508,21 +1647,7 @@ class Window(QMainWindow):
         stack.addWidget(original_heading)
         stack.addWidget(self.track_scroll[0])
 
-        # Compatibility objects for older code paths. The workflow itself now lives in the
-        # timeline context menu so the normal interface stays clean.
-        self.structure_box = QFrame(); self.structure_box.hide()
-        self.parts_hint = QLabel(self.tr('parts_hint'))
-        self.structure_title = QLabel(self.tr('structure_title'))
-        self.split_part_btn = QPushButton(self.tr('split_part')); self.split_part_btn.clicked.connect(self.split_part_at_cursor)
-        self.merge_part_btn = QPushButton(self.tr('merge_part')); self.merge_part_btn.clicked.connect(self.merge_part_with_next)
-        self.manual_btn = QPushButton(self.tr('manual_chapters')); self.manual_btn.clicked.connect(self.start_manual_chapters)
-        self.ai_btn = QPushButton(self.tr('ai_chapters')); self.ai_btn.clicked.connect(self.transcribe_part_to_chapters)
-        self.subtitle_btn = QPushButton(self.tr('subtitle_chapters')); self.subtitle_btn.clicked.connect(self.import_timed_chapters)
-        self.manual_controls = QWidget(); self.manual_controls.hide()
-        self.manual_start_btn = QPushButton(self.tr('manual_start')); self.manual_start_btn.clicked.connect(self.mark_manual_start)
-        self.manual_end_btn = QPushButton(self.tr('manual_end')); self.manual_end_btn.clicked.connect(self.create_manual_chapter)
-        self.manual_cancel_btn = QPushButton(self.tr('manual_cancel')); self.manual_cancel_btn.clicked.connect(self.cancel_manual_mark)
-        self.manual_status = QLabel(self.tr('manual_waiting'))
+        # Chapter creation and Part editing are exposed by the timeline context menu.
 
         # Primary project controls sit immediately above the reference field.
         self.project_controls = QWidget()
@@ -1568,12 +1693,10 @@ class Window(QMainWindow):
 
         # Sidebar jumps to the original video/timeline widgets; editing flow is unchanged.
         for item, target in zip(self.sidebar_nav, (self.video_box, self.track_scroll[0], self.track_scroll[1])):
-            item.clicked.connect(lambda _checked=False, t=target: self.page.ensureWidgetVisible(t, 0, 34))
+            item.clicked.connect(lambda _checked=False, t=target: self.scroll_to_workspace(t))
 
         self.reference.hide()
         self.ref_tools.hide()
-        self.structure_box.hide()
-        self.manual_controls.hide()
         self.manual_mode = False
         self.manual_split_history = []
         self.original.seek_clicks = False
@@ -1658,18 +1781,42 @@ class Window(QMainWindow):
         self.reference.setPlaceholderText(self.tr('reference_placeholder'))
         self.reference.setProperty('replace_label', self.tr('replace_reference'))
         self.reference.setProperty('auto_label', self.tr('use_auto'))
-        self.parts_hint.setText(self.tr('parts_hint'))
-        self.structure_title.setText(self.tr('structure_title'))
-        self.split_part_btn.setText(self.tr('split_part'))
-        self.merge_part_btn.setText(self.tr('merge_part'))
-        self.manual_btn.setText(self.tr('manual_chapters')); self.manual_btn.setToolTip(self.tr('manual_chapters_tip'))
-        self.ai_btn.setText(self.tr('ai_chapters')); self.ai_btn.setToolTip(self.tr('ai_chapters_tip'))
-        self.subtitle_btn.setText(self.tr('subtitle_chapters')); self.subtitle_btn.setToolTip(self.tr('subtitle_chapters_tip'))
-        self.manual_start_btn.setText(self.tr('manual_start')); self.manual_end_btn.setText(self.tr('manual_end')); self.manual_cancel_btn.setText(self.tr('manual_cancel'))
         self.refresh_part_combo()
 
+    def scroll_to_workspace(self, target):
+        """Animate only the scrollbar; do not relayout or animate video frames."""
+        if not self.animations_enabled:
+            self.page.ensureWidgetVisible(target, 0, 34)
+            return
+        scrollbar = self.page.verticalScrollBar()
+        previous = scrollbar.value()
+        self.page.ensureWidgetVisible(target, 0, 34)
+        destination = scrollbar.value()
+        if destination == previous:
+            return
+        scrollbar.setValue(previous)
+        if self._scroll_animation is None:
+            self._scroll_animation = QPropertyAnimation(scrollbar, b'value', self)
+            self._scroll_animation.setDuration(320)
+            self._scroll_animation.setEasingCurve(QEasingCurve.OutCubic)
+        self._scroll_animation.stop()
+        self._scroll_animation.setStartValue(previous)
+        self._scroll_animation.setEndValue(destination)
+        self._scroll_animation.start()
+
+    def set_motion_enabled(self, enabled):
+        self.animations_enabled = bool(enabled)
+        if self._scroll_animation is not None:
+            self._scroll_animation.stop()
+        for button in self.findChildren(MotionButton):
+            button.setMotionEnabled(self.animations_enabled)
+        if self.record_btn:
+            self.record_btn.setRecordingActive(bool(self.recording), self.animations_enabled)
+
     def button(self, kind, tip, fn, circular=False):
-        b = RoundRecordButton() if circular else QPushButton()
+        b = RoundRecordButton() if circular else MotionButton()
+        if isinstance(b, MotionButton):
+            b.setMotionEnabled(self.animations_enabled)
         b.setProperty('icon_kind', kind)
         b.setIcon(icon(kind))
         b.setIconSize(QSize(24, 24))
@@ -1682,15 +1829,15 @@ class Window(QMainWindow):
     def theme(self):
         """Quiet, native-feeling desktop palette: translucent controls and rounded panels."""
         if self.dark:
-            bg, fg, surface, border = '#171a25', '#f4f5fb', '#242a38', '#383f52'
-            hover, muted, selection = '#323b50', '#b2bed4', '#343e56'
-            raised, hint, accent = '#2b3142', '#9da9bf', '#e58bb4'
-            pink, sidebar, lavender = '#e56599', '#202633', '#343a53'
+            bg, fg, surface, border = '#1f2130', '#f4f2ff', '#2a2b3e', '#43445b'
+            hover, muted, selection = '#34334c', '#c5c2db', '#413a62'
+            raised, hint, accent = '#303147', '#aaa5bf', '#c2a5ff'
+            pink, sidebar, lavender = '#bda3f8', '#252639', '#35314c'
         else:
-            bg, fg, surface, border = '#f4f6fb', '#222a3b', '#ffffff', '#e6e9f2'
-            hover, muted, selection = '#f7e9f0', '#69778f', '#fde8f0'
-            raised, hint, accent = '#f7f8fc', '#8793a7', '#e34e83'
-            pink, sidebar, lavender = '#e83d79', '#ffffff', '#f2edff'
+            bg, fg, surface, border = '#f6f7fc', '#26304a', '#ffffff', '#e5e6f0'
+            hover, muted, selection = '#f3efff', '#6d7690', '#eee7ff'
+            raised, hint, accent = '#faf9fe', '#9299ae', '#8664c4'
+            pink, sidebar, lavender = '#aa8ae9', '#fdfcff', '#f2edff'
         QApplication.instance().setStyleSheet(f"""
         QWidget {{ color: {fg}; font-family: 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', sans-serif; font-size: 13px; }}
         QMainWindow, QWidget#centralCanvas, QWidget#canvasBody, QScrollArea {{ background-color: {bg}; }}
@@ -1749,7 +1896,7 @@ class Window(QMainWindow):
         QMainWindow, QWidget#centralCanvas {{ background: {bg}; }}
         QWidget#workspaceCanvas {{ background: transparent; }}
         QFrame#workspaceSidebar {{ background-color: {sidebar}; border: 1px solid {border}; border-radius: 24px; }}
-        QLabel#brandLogo {{ background-color: {pink}; color: white; font-size: 23px; font-weight: 700; border-radius: 11px; }}
+        QLabel#brandLogo {{ background: transparent; border: 0; }}
         QLabel#sidebarBrand {{ font-size: 19px; font-weight: 750; color: {fg}; }}
         QLabel#sidebarEyebrow {{ font-size: 10px; color: {hint}; font-weight: 700; letter-spacing: 1px; }}
         QFrame#sidebarProject {{ background-color: {raised}; border: 1px solid {border}; border-radius: 15px; }}
@@ -1763,13 +1910,13 @@ class Window(QMainWindow):
         QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
         QLabel#brandTitle {{ font-weight: 750; font-size: 21px; color: {fg}; }}
         QLabel#sectionHeading {{ color: {hint}; font-size: 11px; font-weight: 700; padding: 5px 0 2px 12px; }}
-        QLabel#modelInfo {{ color: {muted}; font-size: 11px; }}
+        QLabel#modelInfo {{ color: {muted}; font-size: 12px; }}
         QPushButton {{ background-color: {surface}; color: {fg}; border: 1px solid {border};
             border-radius: 12px; padding: 10px 15px; min-height: 22px; }}
         QPushButton:hover {{ background-color: {hover}; border-color: {accent}; }}
         QPushButton:pressed {{ background-color: {selection}; }}
         QPushButton:disabled {{ color: {hint}; background-color: {raised}; border-color: {border}; }}
-        QPushButton#primaryButton {{ color: #ffffff; background: {pink}; border: 1px solid {pink}; font-weight: 700; }}
+        QPushButton#primaryButton {{ color: #29223a; background: {pink}; border: 1px solid {pink}; font-weight: 700; }}
         QPushButton#primaryButton:hover {{ background: {accent}; }}
         QPushButton#record {{ background: transparent; color: #ffffff; border: 0px; padding: 0px; min-height: 0px; }}
         QPushButton#record:hover {{ background: transparent; }}
@@ -2023,12 +2170,6 @@ class Window(QMainWindow):
         for b in (self.open_btn, self.import_btn, self.empty):
             b.setEnabled(not busy and not rec and not transcribing)
         self.options_btn.setEnabled(not busy and not rec)
-        for b in (self.manual_btn, self.ai_btn, self.subtitle_btn, self.manual_start_btn,
-                  self.manual_end_btn, self.manual_cancel_btn):
-            b.setEnabled(has_project and not busy and not rec and not transcribing)
-        can_parts = has_project and not busy and not rec and not transcribing and not bool(self.project.segments if self.project else [])
-        self.split_part_btn.setEnabled(can_parts)
-        self.merge_part_btn.setEnabled(can_parts and bool(self.project and self.current_part_index < len(self.project.parts) - 1))
         self.part_combo.setEnabled(has_project and not busy and not rec)
         self.reference.setReadOnly(rec or busy)
         for t in (self.original, self.dub):
@@ -2100,8 +2241,6 @@ class Window(QMainWindow):
         self.reference.blockSignals(False)
         self.reference.hide()
         self.ref_tools.hide()
-        self.structure_box.hide()
-        self.manual_controls.hide()
         self.manual_mode = False
         self.manual_split_history = []
         self.original.seek_clicks = False
@@ -2212,7 +2351,6 @@ class Window(QMainWindow):
         self.viewer_stack.setCurrentWidget(self.video)
         self.video.show()
         self.player.setSource(QUrl.fromLocalFile(str(project.root / project.video)))
-        self.structure_box.hide()
         self.manual_mode = False
         self.manual_start = None
         self.manual_split_history = []
@@ -2314,7 +2452,6 @@ class Window(QMainWindow):
         self.current_part_index = max(0, min(index, len(self.project.parts) - 1))
         self.manual_start = None
         self.manual_split_history = []
-        self.manual_status.setText(self.tr('manual_waiting'))
         self.set_timeline_scope(reset_zoom=True)
         self.original.manual_division_mode = bool(self.manual_mode)
         part = self.current_part()
@@ -2333,7 +2470,6 @@ class Window(QMainWindow):
         has_project = bool(self.project)
         has_chapters = bool(self.project and self.project.segments)
         # Structure actions live in the timeline's right-click menu; no permanent panel.
-        self.structure_box.hide()
         self.reference.setVisible(has_chapters)
         self.track_scroll[1].setVisible(has_chapters)
         self.project_controls.setVisible(has_project)
@@ -2508,8 +2644,6 @@ class Window(QMainWindow):
         self.manual_split_history = []
         self.original.seek_clicks = False
         self.original.manual_division_mode = True
-        self.manual_controls.hide()
-        self.manual_status.setText(self.tr('manual_waiting'))
         self.original.update()
 
     def stop_manual_chapters(self):
@@ -2517,7 +2651,6 @@ class Window(QMainWindow):
         self.manual_start = None
         self.manual_split_history = []
         self.original.manual_division_mode = False
-        self.manual_status.setText(self.tr('manual_waiting'))
         self.original.update()
 
     def cancel_manual_mark(self):
@@ -2638,7 +2771,7 @@ class Window(QMainWindow):
             return
         if not self.ensure_work_structure():
             return
-        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False; self.manual_controls.hide()
+        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False
         part = self.current_part()
         if not part:
             return
@@ -2679,7 +2812,7 @@ class Window(QMainWindow):
             return
         if not self.ensure_work_structure():
             return
-        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False; self.manual_controls.hide()
+        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False
         path, _ = QFileDialog.getOpenFileName(self, self.tr('subtitle_structure_dialog'), '', self.tr('subtitle_structure_filter'))
         if not path:
             return
@@ -3314,10 +3447,10 @@ class Window(QMainWindow):
         t = ms / 1000
         if self.bound is not None and t >= self.bound and not self.recording:
             self.player.pause(); self.dubplayer.stop(); self.output.setMuted(False); self.bound = None
-        self.original.position = self.dub.position = t
+        self.original.set_playhead(t)
+        self.dub.set_playhead(t)
         if self.project:
             self.clock.setText(f'{t // 60:02.0f}:{t % 60:05.2f} / {self.project.duration // 60:02.0f}:{self.project.duration % 60:05.2f}')
-        self.original.update(); self.dub.update()
 
     def record(self):
         if self.recording:
@@ -3349,6 +3482,7 @@ class Window(QMainWindow):
         self.record_btn.setIcon(icon('stop', '#ffffff'))
         self.record_btn.setToolTip(self.tr('stop_record'))
         self.set_enabled()
+        self.record_btn.setRecordingActive(True, self.animations_enabled)
         self.timer.start()
 
     def tick(self):
@@ -3370,6 +3504,7 @@ class Window(QMainWindow):
         r = self.recording
         r.stop()
         self.recording = None
+        self.record_btn.setRecordingActive(False)
         self.stop_playback()
         s = self.project.segments[self.index]
         if r.frames > 0 and not r.error:
@@ -3384,7 +3519,7 @@ class Window(QMainWindow):
         self.dub.live = []
         self.dub.update()
         self.record_btn.setProperty('icon_kind', 'mic')
-        self.record_btn.setIcon(icon('mic', '#e1dfea' if self.dark else '#626777'))
+        self.record_btn.setIcon(icon('mic', '#ffffff'))
         self.record_btn.setToolTip(self.tr('record').split(' · ')[0] + ' · ' + self.shortcut_text('record'))
         self.set_enabled()
 
@@ -3453,8 +3588,15 @@ class Window(QMainWindow):
         d = ModernDialog(self)
         d.setWindowTitle(self.tr('prefs_title'))
         d.setSizeGripEnabled(True)
-        d.resize(660, 540)
+        d.resize(710, 600)
         f = QFormLayout(d.body)
+        f.setHorizontalSpacing(18)
+        f.setVerticalSpacing(11)
+
+        motion_toggle = QCheckBox(self.tr('motion'))
+        motion_toggle.setChecked(self.animations_enabled)
+        motion_toggle.setToolTip(self.tr('motion_tip'))
+        f.addRow(self.tr('appearance'), motion_toggle)
 
         ui_lang = QComboBox()
         ui_lang.addItem('Português', 'pt')
@@ -3505,6 +3647,7 @@ class Window(QMainWindow):
 
         model_info = QLabel()
         model_info.setWordWrap(True)
+        model_info.setMinimumHeight(56)
         model_info.setObjectName('modelInfo')
         def update_model_info():
             model_id = model.currentData()
@@ -3521,6 +3664,9 @@ class Window(QMainWindow):
         bb.button(QDialogButtonBox.Cancel).setText(self.tr('dialog_cancel'))
         bb.accepted.connect(d.accept); bb.rejected.connect(d.reject); f.addRow(bb)
         if d.exec() == QDialog.Accepted:
+            motion_enabled = motion_toggle.isChecked()
+            self.settings.setValue('appearance/motion_enabled', motion_enabled)
+            self.set_motion_enabled(motion_enabled)
             self.device = devices.currentData()
             self.transcription_model = model.currentData()
             selected_audio_language = audio_lang.currentData()
@@ -3563,7 +3709,7 @@ def main():
     app.setApplicationName('DubStudio')
     app.setOrganizationName('DubStudio')
     base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
-    candidates = [base / 'assets' / 'dubstudio.ico', base / 'assets' / 'dubstudio.png',
+    candidates = [base / 'assets' / 'dubstudio.ico', base / 'assets' / 'dubstudio.svg', base / 'assets' / 'dubstudio.png',
                   Path(__file__).resolve().parent.parent / 'assets' / 'dubstudio.png']
     for path in candidates:
         if path.is_file():
@@ -3571,7 +3717,8 @@ def main():
             if not app_icon.isNull():
                 app.setWindowIcon(app_icon)
                 break
-    app.setStyle('Fusion')
+    if sys.platform != 'darwin':
+        app.setStyle('Fusion')
     window = Window()
     window.setWindowIcon(app.windowIcon())
     window.showMaximized()  # Maximized, NOT exclusive fullscreen; keeps OS titlebar/controls.

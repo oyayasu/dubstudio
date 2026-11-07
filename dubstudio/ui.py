@@ -1854,10 +1854,28 @@ class Window(QMainWindow):
         self.reference.setProperty('replace_label', self.tr('replace_reference'))
         self.reference.setProperty('auto_label', self.tr('use_auto'))
         self.refresh_part_combo()
+        self.update_toolbar_density()
+
+    def update_toolbar_density(self):
+        """Retain every existing action on small macOS windows, using icon-only mode."""
+        compact = self.width() < 1310
+        for button, text, expanded_width in (
+            (self.open_btn, self.tr('open_project'), 143),
+            (self.save_btn, self.tr('toolbar_save'), 95),
+            (self.export_btn, self.tr('export'), 110),
+        ):
+            button.setText('' if compact else text)
+            button.setFixedWidth(44 if compact else expanded_width)
+        self.import_btn.setText('' if compact else self.tr('import_video'))
+        self.import_btn.setFixedWidth(45 if compact else 151)
 
     def navigate_workspace(self, button, target):
+        normal = '#c5c4dc' if self.dark else '#62698b'
+        selected = '#dbc9ff' if self.dark else '#7854da'
         for item in self.sidebar_nav:
-            item.setProperty('selected', item is button)
+            active = item is button
+            item.setProperty('selected', active)
+            item.setIcon(icon(item.property('icon_kind'), selected if active else normal))
             item.style().unpolish(item)
             item.style().polish(item)
         self.scroll_to_workspace(target)
@@ -2048,6 +2066,7 @@ class Window(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, 'zoom'):
+            self.update_toolbar_density()
             self.zoom_changed()
             QTimer.singleShot(0, self.update_video_shape)
 

@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - 'dubstudio/ui.py'
+      - 'dubstudio/design.py'
       - 'assets/dubstudio.svg'
       - 'scripts/capture_ui.py'
       - '.github/workflows/ui-screenshots.yml'
   pull_request:
     paths:
       - 'dubstudio/ui.py'
+      - 'dubstudio/design.py'
       - 'assets/dubstudio.svg'
       - 'scripts/capture_ui.py'
       - '.github/workflows/ui-screenshots.yml'
@@ -49,5 +51,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B ui-previews
           git add previews/*.png
-          git commit -m "Render actual DubStudio v1.2 desktop UI"
+          git commit -m "Render actual DubStudio desktop UI"
           git push --force origin HEAD:ui-previews

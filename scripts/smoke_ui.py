@@ -33,6 +33,22 @@ assert d.heading.text() == 'Keyboard shortcuts'
 assert w.video_box.height() >= 300
 assert w.sidebar.objectName() == 'workspaceSidebar'
 assert len(w.sidebar_nav) == 3
+# Regression guard: this is a real layout rewrite, not a palette-only change.
+assert w.top_toolbar.objectName() == 'topToolbar'
+assert w.video_card.objectName() == 'videoCard'
+assert w.reference_card.objectName() == 'referenceCard'
+assert w.timeline_card.objectName() == 'timelineCard'
+assert w.media_row.count() == 2
+assert w.video_card_layout.count() >= 4
+assert w.timeline_layout.indexOf(w.track_scroll[0]) >= 0
+assert w.timeline_layout.indexOf(w.track_scroll[1]) >= 0
+assert w.open_btn.text() == w.tr('open_project')
+assert w.save_btn.text() == w.tr('toolbar_save')
+assert w.import_btn.icon().isNull() is False
+assert w.ref_btn.icon().isNull() is False
+assert len({b.property('icon_kind') for b in w.sidebar_nav}) == 3
+assert all(not b.icon().isNull() for b in w.sidebar_nav)
+assert w.close_project_btn.text() == ''  # icon-only, labelled for accessibility
 assert all(isinstance(button, MotionButton) for button in w.sidebar_nav)
 assert not w.brand_logo.pixmap().isNull(), 'The new pastel app icon must render in the sidebar'
 assert w.animations_enabled, 'Smooth motion should be enabled by default'

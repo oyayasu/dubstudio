@@ -1790,7 +1790,7 @@ class Window(QMainWindow):
                 + f"  ·  {int(self.project.duration // 60):02d}:{int(self.project.duration % 60):02d}"
             )
             if hasattr(self, 'project_chip'):
-                self.project_chip.setText(Path(self.project.path).stem if self.project.path
+                self.project_chip.setText(Path(getattr(self.project, 'path', '')).stem if getattr(self.project, 'path', '')
                                           else Path(self.project.video).stem if self.project.video
                                           else self.tr('toolbar_empty'))
         else:
@@ -1806,7 +1806,7 @@ class Window(QMainWindow):
         self.export_btn.setText(self.tr('export'))
         self.open_btn.setText(self.tr('open_project'))
         self.project_chip.setText(
-            Path(self.project.path).stem if self.project and self.project.path
+            Path(getattr(self.project, 'path', '')).stem if self.project and getattr(self.project, 'path', '')
             else Path(self.project.video).stem if self.project and self.project.video
             else self.tr('toolbar_empty')
         )

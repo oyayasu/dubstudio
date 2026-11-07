@@ -2,7 +2,7 @@ from __future__ import annotations
 import os, shutil, sys, uuid, math, json
 from pathlib import Path
 import ctypes
-from PySide6.QtCore import (Qt, QThread, Signal, QTimer, QUrl, QSize, QRect, QRectF, QPoint,
+from PySide6.QtCore import (Qt, QThread, Signal, QTimer, QUrl, QSize, QRect, QRectF,
     QSettings, QEvent, Property, QPropertyAnimation, QEasingCurve)
 from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QIcon, QPixmap,
                            QKeySequence, QPainterPath, QRegion)
@@ -1645,21 +1645,7 @@ class Window(QMainWindow):
         stack.addWidget(original_heading)
         stack.addWidget(self.track_scroll[0])
 
-        # Compatibility objects for older code paths. The workflow itself now lives in the
-        # timeline context menu so the normal interface stays clean.
-        self.structure_box = QFrame(); self.structure_box.hide()
-        self.parts_hint = QLabel(self.tr('parts_hint'))
-        self.structure_title = QLabel(self.tr('structure_title'))
-        self.split_part_btn = QPushButton(self.tr('split_part')); self.split_part_btn.clicked.connect(self.split_part_at_cursor)
-        self.merge_part_btn = QPushButton(self.tr('merge_part')); self.merge_part_btn.clicked.connect(self.merge_part_with_next)
-        self.manual_btn = QPushButton(self.tr('manual_chapters')); self.manual_btn.clicked.connect(self.start_manual_chapters)
-        self.ai_btn = QPushButton(self.tr('ai_chapters')); self.ai_btn.clicked.connect(self.transcribe_part_to_chapters)
-        self.subtitle_btn = QPushButton(self.tr('subtitle_chapters')); self.subtitle_btn.clicked.connect(self.import_timed_chapters)
-        self.manual_controls = QWidget(); self.manual_controls.hide()
-        self.manual_start_btn = QPushButton(self.tr('manual_start')); self.manual_start_btn.clicked.connect(self.mark_manual_start)
-        self.manual_end_btn = QPushButton(self.tr('manual_end')); self.manual_end_btn.clicked.connect(self.create_manual_chapter)
-        self.manual_cancel_btn = QPushButton(self.tr('manual_cancel')); self.manual_cancel_btn.clicked.connect(self.cancel_manual_mark)
-        self.manual_status = QLabel(self.tr('manual_waiting'))
+        # Chapter creation and Part editing are exposed by the timeline context menu.
 
         # Primary project controls sit immediately above the reference field.
         self.project_controls = QWidget()
@@ -1709,8 +1695,6 @@ class Window(QMainWindow):
 
         self.reference.hide()
         self.ref_tools.hide()
-        self.structure_box.hide()
-        self.manual_controls.hide()
         self.manual_mode = False
         self.manual_split_history = []
         self.original.seek_clicks = False
@@ -1795,14 +1779,6 @@ class Window(QMainWindow):
         self.reference.setPlaceholderText(self.tr('reference_placeholder'))
         self.reference.setProperty('replace_label', self.tr('replace_reference'))
         self.reference.setProperty('auto_label', self.tr('use_auto'))
-        self.parts_hint.setText(self.tr('parts_hint'))
-        self.structure_title.setText(self.tr('structure_title'))
-        self.split_part_btn.setText(self.tr('split_part'))
-        self.merge_part_btn.setText(self.tr('merge_part'))
-        self.manual_btn.setText(self.tr('manual_chapters')); self.manual_btn.setToolTip(self.tr('manual_chapters_tip'))
-        self.ai_btn.setText(self.tr('ai_chapters')); self.ai_btn.setToolTip(self.tr('ai_chapters_tip'))
-        self.subtitle_btn.setText(self.tr('subtitle_chapters')); self.subtitle_btn.setToolTip(self.tr('subtitle_chapters_tip'))
-        self.manual_start_btn.setText(self.tr('manual_start')); self.manual_end_btn.setText(self.tr('manual_end')); self.manual_cancel_btn.setText(self.tr('manual_cancel'))
         self.refresh_part_combo()
 
     def scroll_to_workspace(self, target):
@@ -2193,12 +2169,6 @@ class Window(QMainWindow):
         for b in (self.open_btn, self.import_btn, self.empty):
             b.setEnabled(not busy and not rec and not transcribing)
         self.options_btn.setEnabled(not busy and not rec)
-        for b in (self.manual_btn, self.ai_btn, self.subtitle_btn, self.manual_start_btn,
-                  self.manual_end_btn, self.manual_cancel_btn):
-            b.setEnabled(has_project and not busy and not rec and not transcribing)
-        can_parts = has_project and not busy and not rec and not transcribing and not bool(self.project.segments if self.project else [])
-        self.split_part_btn.setEnabled(can_parts)
-        self.merge_part_btn.setEnabled(can_parts and bool(self.project and self.current_part_index < len(self.project.parts) - 1))
         self.part_combo.setEnabled(has_project and not busy and not rec)
         self.reference.setReadOnly(rec or busy)
         for t in (self.original, self.dub):
@@ -2270,8 +2240,6 @@ class Window(QMainWindow):
         self.reference.blockSignals(False)
         self.reference.hide()
         self.ref_tools.hide()
-        self.structure_box.hide()
-        self.manual_controls.hide()
         self.manual_mode = False
         self.manual_split_history = []
         self.original.seek_clicks = False
@@ -2382,7 +2350,6 @@ class Window(QMainWindow):
         self.viewer_stack.setCurrentWidget(self.video)
         self.video.show()
         self.player.setSource(QUrl.fromLocalFile(str(project.root / project.video)))
-        self.structure_box.hide()
         self.manual_mode = False
         self.manual_start = None
         self.manual_split_history = []
@@ -2484,7 +2451,6 @@ class Window(QMainWindow):
         self.current_part_index = max(0, min(index, len(self.project.parts) - 1))
         self.manual_start = None
         self.manual_split_history = []
-        self.manual_status.setText(self.tr('manual_waiting'))
         self.set_timeline_scope(reset_zoom=True)
         self.original.manual_division_mode = bool(self.manual_mode)
         part = self.current_part()
@@ -2503,7 +2469,6 @@ class Window(QMainWindow):
         has_project = bool(self.project)
         has_chapters = bool(self.project and self.project.segments)
         # Structure actions live in the timeline's right-click menu; no permanent panel.
-        self.structure_box.hide()
         self.reference.setVisible(has_chapters)
         self.track_scroll[1].setVisible(has_chapters)
         self.project_controls.setVisible(has_project)
@@ -2678,8 +2643,6 @@ class Window(QMainWindow):
         self.manual_split_history = []
         self.original.seek_clicks = False
         self.original.manual_division_mode = True
-        self.manual_controls.hide()
-        self.manual_status.setText(self.tr('manual_waiting'))
         self.original.update()
 
     def stop_manual_chapters(self):
@@ -2687,7 +2650,6 @@ class Window(QMainWindow):
         self.manual_start = None
         self.manual_split_history = []
         self.original.manual_division_mode = False
-        self.manual_status.setText(self.tr('manual_waiting'))
         self.original.update()
 
     def cancel_manual_mark(self):
@@ -2808,7 +2770,7 @@ class Window(QMainWindow):
             return
         if not self.ensure_work_structure():
             return
-        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False; self.manual_controls.hide()
+        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False
         part = self.current_part()
         if not part:
             return
@@ -2849,7 +2811,7 @@ class Window(QMainWindow):
             return
         if not self.ensure_work_structure():
             return
-        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False; self.manual_controls.hide()
+        self.manual_mode = False; self.manual_split_history = []; self.original.seek_clicks = False; self.original.manual_division_mode = False
         path, _ = QFileDialog.getOpenFileName(self, self.tr('subtitle_structure_dialog'), '', self.tr('subtitle_structure_filter'))
         if not path:
             return

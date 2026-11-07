@@ -1,6 +1,15 @@
-# DubStudio v1.3.4
+# DubStudio v1.4.0
 
 Free desktop dubbing editor for macOS and Windows. Built from the DubStudio v1.0.1 editable source (Oct 23, 2026).
+
+## v1.4 — Pastel macOS-inspired interface
+
+- New scalable lavender-and-blue microphone icon (`assets/dubstudio.svg`), included in the sidebar. The build process rasterizes it at 1024 px and produces platform-specific `.icns` / `.ico` files.
+- Softer light and dark themes with macOS-like spacing and native macOS Qt widget style.
+- Optional **Smooth animations** setting in Preferences, enabled by default and saved locally. It controls hover transitions, dialog content fade, animated sidebar scrolling and a subtle recording pulse. Turning it off stops visual animation work without affecting audio or editing.
+- Reduced waveform redraw during media playback: the two tracks update only narrow strips around the previous and current playhead.
+- The original Python + Qt architecture stays in place. Media decoding/encoding and Whisper inference already use native libraries (FFmpeg/CTranslate2); this release avoids a risky port without measured bottlenecks.
+- Intentionally preserves project format, recordings, media pipeline, actions, translations and editable shortcuts.
 
 ## Improvements
 
@@ -46,7 +55,7 @@ Imports video, supports SRT/VTT/ASS/SSA structures, manual chapter markers, micr
 
 ## Source and compatibility
 
-Qt (PySide6) desktop UI. This update deliberately preserves the existing project storage and core audio rendering. Keep a backup of important projects before trying a new build.
+Qt (PySide6) desktop UI. This update deliberately preserves the existing project storage and core audio rendering. The checked-in legacy PNG is a fallback; builds generate the actual icon PNG from the new SVG master. Keep a backup of important projects before trying a new build.
 
 
 ## DubStudio v1.3.0 — Refined desktop look

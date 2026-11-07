@@ -54,7 +54,7 @@ PATHS = {
 @lru_cache(maxsize=256)
 def icon(kind: str, color: str = '#5d6688') -> QIcon:
     """Render at retina resolution. Cache prevents rerasterization during theme changes."""
-    body = PATHS.get(kind, PATHS['plus'])
+    body = PATHS.get(kind, PATHS['plus']).replace('currentColor', color)
     svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" '
         f'color="{color}" fill="none" stroke="{color}" stroke-width="1.8" '

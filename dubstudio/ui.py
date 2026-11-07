@@ -3,7 +3,7 @@ import os, shutil, sys, uuid, math, json
 from pathlib import Path
 import ctypes
 from PySide6.QtCore import (Qt, QThread, Signal, QTimer, QUrl, QSize, QRect, QRectF,
-    QSettings, QEvent, Property, QPropertyAnimation, QEasingCurve)
+    QSettings, QEvent, Property, QPropertyAnimation, QAbstractAnimation, QEasingCurve)
 from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QIcon, QPixmap,
                            QKeySequence, QPainterPath, QRegion)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -665,7 +665,7 @@ class RoundRecordButton(QPushButton):
             fill = '#a88bdc' if not dark else '#b8a1f2'
         else:
             fill = '#b49ae8' if not dark else '#aa90e4'
-        if self._pulse_animation.state() == QPropertyAnimation.Running:
+        if self._pulse_animation.state() == QAbstractAnimation.State.Running:
             ring = QColor('#c4aaff')
             ring.setAlpha(round(100 * (1.0 - self._pulse)))
             painter.setPen(QPen(ring, 1.5 + 2 * self._pulse))
@@ -1289,6 +1289,8 @@ class ModernDialog(QDialog):
         self._entrance_animation.setStartValue(0.0)
         self._entrance_animation.setEndValue(1.0)
         self._entrance_animation.setEasingCurve(QEasingCurve.OutCubic)
+        # Remove the compositing effect when the entrance is complete: no idle GPU/CPU cost.
+        self._entrance_animation.finished.connect(lambda: self.body.setGraphicsEffect(None))
         self._entrance_animation.start()
 
     def setWindowTitle(self, text):
@@ -1793,15 +1795,14 @@ class Window(QMainWindow):
         if destination == previous:
             return
         scrollbar.setValue(previous)
-        if self._scroll_animation is not None:
-            self._scroll_animation.stop()
-        animation = QPropertyAnimation(scrollbar, b'value', self)
-        animation.setDuration(320)
-        animation.setStartValue(previous)
-        animation.setEndValue(destination)
-        animation.setEasingCurve(QEasingCurve.OutCubic)
-        self._scroll_animation = animation
-        animation.start()
+        if self._scroll_animation is None:
+            self._scroll_animation = QPropertyAnimation(scrollbar, b'value', self)
+            self._scroll_animation.setDuration(320)
+            self._scroll_animation.setEasingCurve(QEasingCurve.OutCubic)
+        self._scroll_animation.stop()
+        self._scroll_animation.setStartValue(previous)
+        self._scroll_animation.setEndValue(destination)
+        self._scroll_animation.start()
 
     def set_motion_enabled(self, enabled):
         self.animations_enabled = bool(enabled)

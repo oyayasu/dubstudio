@@ -168,6 +168,9 @@ def stylesheet(dark: bool) -> str:
     QPushButton#sidebarNav[selected="true"] {
         background: %(selected)s; color: %(accent)s; border: 1px solid %(border)s;
     }
+    QFrame#recordCard {
+        background: %(soft)s; border: 1px solid %(border)s; border-radius: 17px;
+    }
     QFrame#videoBox {
         background: %(raised)s; border: 1px solid %(border)s; border-radius: 19px;
     }

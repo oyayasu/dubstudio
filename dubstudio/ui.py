@@ -471,9 +471,9 @@ for _lang, _text in WORKSPACE_I18N.items():
 
 # Optional visual motion. No project data or audio processing depends on this flag.
 MOTION_I18N = {
-    'pt': {'motion': 'Animações suaves', 'motion_tip': 'Desative para reduzir repinturas e efeitos visuais.'},
-    'en': {'motion': 'Smooth animations', 'motion_tip': 'Turn off to minimize redraws and visual effects.'},
-    'ja': {'motion': 'スムーズなアニメーション', 'motion_tip': '無効にすると画面の再描画と視覚効果を減らせます。'},
+    'pt': {'appearance': 'Aparência', 'motion': 'Animações suaves', 'motion_tip': 'Desative para reduzir repinturas e efeitos visuais.'},
+    'en': {'appearance': 'Appearance', 'motion': 'Smooth animations', 'motion_tip': 'Turn off to minimize redraws and visual effects.'},
+    'ja': {'appearance': '外観', 'motion': 'スムーズなアニメーション', 'motion_tip': '無効にすると画面の再描画と視覚効果を減らせます。'},
 }
 for _lang, _text in MOTION_I18N.items():
     I18N[_lang].update(_text)
@@ -3596,7 +3596,7 @@ class Window(QMainWindow):
         motion_toggle = QCheckBox(self.tr('motion'))
         motion_toggle.setChecked(self.animations_enabled)
         motion_toggle.setToolTip(self.tr('motion_tip'))
-        f.addRow(self.tr('prefs_title'), motion_toggle)
+        f.addRow(self.tr('appearance'), motion_toggle)
 
         ui_lang = QComboBox()
         ui_lang.addItem('Português', 'pt')

@@ -42,8 +42,8 @@ assert w.media_row.count() == 2
 assert w.video_card_layout.count() >= 4
 assert w.timeline_layout.indexOf(w.track_scroll[0]) >= 0
 assert w.timeline_layout.indexOf(w.track_scroll[1]) >= 0
-assert w.open_btn.text() == w.tr('open_project')
-assert w.save_btn.text() == w.tr('toolbar_save')
+assert w.open_btn.text() == ('' if w.width() < 1310 else w.tr('open_project'))
+assert w.save_btn.text() == ('' if w.width() < 1310 else w.tr('toolbar_save'))
 assert w.import_btn.icon().isNull() is False
 assert w.ref_btn.icon().isNull() is False
 assert len({b.property('icon_kind') for b in w.sidebar_nav}) == 3

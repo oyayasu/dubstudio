@@ -2,7 +2,16 @@ name: DubStudio UI Screenshots
 
 on:
   push:
+    branches: [main]
     paths:
+      - 'dubstudio/ui.py'
+      - 'assets/dubstudio.svg'
+      - 'scripts/capture_ui.py'
+      - '.github/workflows/ui-screenshots.yml'
+  pull_request:
+    paths:
+      - 'dubstudio/ui.py'
+      - 'assets/dubstudio.svg'
       - 'scripts/capture_ui.py'
       - '.github/workflows/ui-screenshots.yml'
   workflow_dispatch:
@@ -34,6 +43,7 @@ jobs:
           path: previews/*.png
           if-no-files-found: error
       - name: Publish screenshots to preview branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

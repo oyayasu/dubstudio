@@ -1910,7 +1910,7 @@ class Window(QMainWindow):
         QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
         QLabel#brandTitle {{ font-weight: 750; font-size: 21px; color: {fg}; }}
         QLabel#sectionHeading {{ color: {hint}; font-size: 11px; font-weight: 700; padding: 5px 0 2px 12px; }}
-        QLabel#modelInfo {{ color: {muted}; font-size: 11px; }}
+        QLabel#modelInfo {{ color: {muted}; font-size: 12px; }}
         QPushButton {{ background-color: {surface}; color: {fg}; border: 1px solid {border};
             border-radius: 12px; padding: 10px 15px; min-height: 22px; }}
         QPushButton:hover {{ background-color: {hover}; border-color: {accent}; }}
@@ -3588,13 +3588,15 @@ class Window(QMainWindow):
         d = ModernDialog(self)
         d.setWindowTitle(self.tr('prefs_title'))
         d.setSizeGripEnabled(True)
-        d.resize(660, 540)
+        d.resize(710, 600)
         f = QFormLayout(d.body)
+        f.setHorizontalSpacing(18)
+        f.setVerticalSpacing(11)
 
         motion_toggle = QCheckBox(self.tr('motion'))
         motion_toggle.setChecked(self.animations_enabled)
         motion_toggle.setToolTip(self.tr('motion_tip'))
-        f.addRow('', motion_toggle)
+        f.addRow(self.tr('prefs_title'), motion_toggle)
 
         ui_lang = QComboBox()
         ui_lang.addItem('Português', 'pt')
@@ -3645,6 +3647,7 @@ class Window(QMainWindow):
 
         model_info = QLabel()
         model_info.setWordWrap(True)
+        model_info.setMinimumHeight(56)
         model_info.setObjectName('modelInfo')
         def update_model_info():
             model_id = model.currentData()

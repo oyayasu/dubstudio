@@ -8,9 +8,31 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ICON = ROOT / 'assets' / 'dubstudio.png'
+SVG_ICON = ROOT / 'assets' / 'dubstudio.svg'
+
+
+def render_icon_png():
+    """Render the vector master at full resolution for .ico/.icns and bundled Qt resources."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QImage, QPainter
+    from PySide6.QtSvg import QSvgRenderer
+
+    renderer = QSvgRenderer(str(SVG_ICON))
+    if not renderer.isValid():
+        raise RuntimeError(f'Invalid app icon SVG: {SVG_ICON}')
+    image = QImage(1024, 1024, QImage.Format_ARGB32_Premultiplied)
+    image.fill(Qt.transparent)
+    painter = QPainter(image)
+    try:
+        renderer.render(painter)
+    finally:
+        painter.end()
+    if not image.save(str(ICON), 'PNG'):
+        raise RuntimeError(f'Could not render app icon: {ICON}')
 
 
 def build_icon():
+    render_icon_png()
     system = platform.system()
     if system == 'Windows':
         from PIL import Image
@@ -42,6 +64,8 @@ def main():
     args = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean',
         '--windowed', '--onedir', '--noupx', '--name', 'DubStudio', '--icon', str(ico),
         '--add-data', f'{ICON}{os.pathsep}assets',
+        '--add-data', f'{SVG_ICON}{os.pathsep}assets',
+        '--hidden-import', 'PySide6.QtSvg',
         '--collect-all', 'imageio_ffmpeg', '--collect-all', 'faster_whisper',
         '--collect-all', 'ctranslate2', '--collect-all', 'tokenizers',
         '--collect-all', 'soundfile', '--collect-all', 'sounddevice',

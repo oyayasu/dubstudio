@@ -9,15 +9,16 @@ from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QIcon, QPixmap,
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QFileDialog, QLabel, QLineEdit, QPlainTextEdit, QTextEdit, QScrollArea, QSlider,
     QDialog, QFormLayout, QComboBox, QDoubleSpinBox, QCheckBox, QDialogButtonBox, QMessageBox,
-    QProgressDialog, QFrame, QSizePolicy, QStackedLayout, QMenu, QKeySequenceEdit, QGroupBox, QGraphicsDropShadowEffect)
+    QProgressDialog, QFrame, QSizePolicy, QStackedLayout, QMenu, QKeySequenceEdit, QGroupBox, QGraphicsDropShadowEffect, QGraphicsOpacityEffect)
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from . import core
+from .design import icon, stylesheet
 from .recorder import Recorder
 from .shortcuts import (DEFAULT_SHORTCUTS, GROUPS, LABELS, normalise,
                         find_conflict, overrides, display_label)
 
-BUILD_VERSION = '1.4.0'
+BUILD_VERSION = '1.5.0'
 
 
 I18N = {
@@ -478,6 +479,30 @@ MOTION_I18N = {
 for _lang, _text in MOTION_I18N.items():
     I18N[_lang].update(_text)
 
+DESIGN_I18N = {
+    'pt': {
+        'toolbar_empty': 'Nenhum projeto aberto', 'toolbar_save': 'Salvar',
+        'reference_panel': 'Texto de referência', 'record_panel': 'Gravação',
+        'record_hint': 'Pressione R para gravar o capítulo selecionado',
+        'timeline_panel': 'Linha do tempo',
+    },
+    'en': {
+        'toolbar_empty': 'No project open', 'toolbar_save': 'Save',
+        'reference_panel': 'Reference text', 'record_panel': 'Recording',
+        'record_hint': 'Press R to record the selected chapter',
+        'timeline_panel': 'Timeline',
+    },
+    'ja': {
+        'toolbar_empty': 'プロジェクトなし', 'toolbar_save': '保存',
+        'reference_panel': '参照テキスト', 'record_panel': '録音',
+        'record_hint': 'Rキーで選択中のチャプターを録音',
+        'timeline_panel': 'タイムライン',
+    },
+}
+for _lang, _text in DESIGN_I18N.items():
+    I18N[_lang].update(_text)
+
+
 MODEL_KEYS = {
     'tiny': ('model_tiny_name', 'model_tiny_desc'),
     'base': ('model_base_name', 'model_base_desc'),
@@ -510,65 +535,6 @@ class Job(QThread):
         except Exception as e:
             if not self.isInterruptionRequested():
                 self.failed.emit(str(e))
-
-
-# Vector icons remain crisp on Windows display scaling.
-def icon(kind, color='#687080'):
-    pm = QPixmap(24, 24)
-    pm.fill(Qt.transparent)
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.Antialiasing)
-    p.setPen(QPen(QColor(color), 1.8, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-    if kind == 'save':
-        p.drawRoundedRect(QRectF(4, 3, 16, 18), 3, 3)
-        p.drawRect(QRectF(8, 3, 8, 6))
-        p.drawRoundedRect(QRectF(8, 14, 8, 7), 1, 1)
-    elif kind == 'export':
-        p.drawLine(13, 4, 21, 4); p.drawLine(21, 4, 21, 12); p.drawLine(11, 14, 21, 4)
-        p.drawLine(6, 4, 4, 4); p.drawLine(4, 4, 4, 21); p.drawLine(4, 21, 21, 21); p.drawLine(21, 21, 21, 17)
-    elif kind == 'mic':
-        p.drawRoundedRect(QRectF(9, 3, 6, 12), 3, 3)
-        p.drawArc(QRectF(5, 8, 14, 11), 180 * 16, 180 * 16)
-        p.drawLine(12, 19, 12, 22)
-    elif kind == 'stop':
-        p.drawRoundedRect(QRectF(6, 6, 12, 12), 2, 2)
-    elif kind == 'play':
-        p.drawLine(8, 5, 19, 12); p.drawLine(19, 12, 8, 19); p.drawLine(8, 19, 8, 5)
-    elif kind == 'pause':
-        p.drawLine(9, 5, 9, 19); p.drawLine(15, 5, 15, 19)
-    elif kind == 'restart':
-        p.drawArc(QRectF(4, 4, 16, 16), 35 * 16, 285 * 16)
-        p.drawLine(4, 9, 4, 4); p.drawLine(4, 4, 9, 4)
-        p.drawLine(10, 8, 16, 12); p.drawLine(16, 12, 10, 16); p.drawLine(10, 16, 10, 8)
-    elif kind == 'folder':
-        p.drawRoundedRect(QRectF(3, 7, 19, 14), 2, 2)
-        p.drawLine(3, 7, 3, 4); p.drawLine(3, 4, 10, 4); p.drawLine(10, 4, 13, 7)
-    elif kind == 'close_project':
-        p.drawRoundedRect(QRectF(3, 5, 18, 15), 2, 2)
-        p.drawLine(8, 9, 16, 17); p.drawLine(16, 9, 8, 17)
-    elif kind == 'chevron_left':
-        p.drawLine(15, 6, 9, 12); p.drawLine(9, 12, 15, 18)
-    elif kind == 'chevron_right':
-        p.drawLine(9, 6, 15, 12); p.drawLine(15, 12, 9, 18)
-    elif kind == 'settings':
-        for y, x in [(6, 8), (12, 16), (18, 10)]:
-            p.drawLine(3, y, 21, y); p.setBrush(QColor(color)); p.drawEllipse(QRectF(x - 2, y - 2, 4, 4)); p.setBrush(Qt.NoBrush)
-    elif kind == 'help':
-        p.drawEllipse(QRectF(4, 4, 16, 16))
-        p.drawArc(QRectF(9, 7, 7, 7), 10 * 16, 185 * 16)
-        p.drawLine(12, 14, 12, 15)
-        p.drawPoint(12, 18)
-    elif kind == 'plus':
-        p.drawLine(12, 5, 12, 19)
-        p.drawLine(5, 12, 19, 12)
-    elif kind == 'sun':
-        p.drawEllipse(QRectF(8, 8, 8, 8))
-        for a, b, c, d in [(12,2,12,4),(12,20,12,22),(2,12,4,12),(20,12,22,12),
-                            (5,5,6,6),(18,18,19,19),(5,19,6,18),(18,6,19,5)]:
-            p.drawLine(a, b, c, d)
-    p.end()
-    return QIcon(pm)
-
 
 
 class MotionButton(QPushButton):
@@ -1247,17 +1213,6 @@ class ModernDialog(QDialog):
         self.header.setObjectName('dialogHeader')
         header_row = QHBoxLayout(self.header)
         header_row.setContentsMargins(2, 0, 0, 6)
-        traffic = QWidget()
-        traffic.setObjectName('trafficLights')
-        traffic_row = QHBoxLayout(traffic)
-        traffic_row.setContentsMargins(0, 0, 14, 0)
-        traffic_row.setSpacing(6)
-        for name in ('trafficRed', 'trafficYellow', 'trafficGreen'):
-            dot = QLabel('')
-            dot.setObjectName(name)
-            dot.setFixedSize(10, 10)
-            traffic_row.addWidget(dot)
-        header_row.addWidget(traffic)
         self.heading = QLabel()
         self.heading.setObjectName('dialogTitle')
         header_row.addWidget(self.heading)
@@ -1322,8 +1277,8 @@ class Window(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('DubStudio')
-        self.resize(1200, 820)
-        self.setMinimumSize(760, 610)
+        self.resize(1480, 920)
+        self.setMinimumSize(990, 670)
         self.project = None
         self.index = 0
         self.dirty = False
@@ -1391,26 +1346,26 @@ class Window(QMainWindow):
         outer.setObjectName('centralCanvas')
         self.setCentralWidget(outer)
         shell = QHBoxLayout(outer)
-        shell.setContentsMargins(16, 16, 16, 16)
+        shell.setContentsMargins(14, 14, 14, 14)
         shell.setSpacing(14)
 
         self.sidebar = QFrame()
         self.sidebar.setObjectName('workspaceSidebar')
-        self.sidebar.setFixedWidth(232)
+        self.sidebar.setFixedWidth(216)
         side = QVBoxLayout(self.sidebar)
-        side.setContentsMargins(18, 20, 18, 20)
-        side.setSpacing(13)
+        side.setContentsMargins(15, 22, 15, 16)
+        side.setSpacing(10)
         brand_row = QHBoxLayout()
         brand_row.setSpacing(9)
         self.brand_logo = QLabel()
         self.brand_logo.setObjectName('brandLogo')
-        self.brand_logo.setFixedSize(42, 42)
+        self.brand_logo.setFixedSize(52, 52)
         self.brand_logo.setAlignment(Qt.AlignCenter)
         assets_root = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent)) / 'assets'
         logo = QIcon(str(assets_root / 'dubstudio.svg'))
         if logo.isNull():
             logo = QIcon(str(assets_root / 'dubstudio.png'))
-        self.brand_logo.setPixmap(logo.pixmap(QSize(40, 40)))
+        self.brand_logo.setPixmap(logo.pixmap(QSize(52, 52)))
         brand_row.addWidget(self.brand_logo)
         self.brand_sidebar_name = QLabel('DubStudio')
         self.brand_sidebar_name.setObjectName('sidebarBrand')
@@ -1420,11 +1375,10 @@ class Window(QMainWindow):
         self.sidebar_tagline = QLabel(self.tr('sidebar_tagline'))
         self.sidebar_tagline.setObjectName('sidebarEyebrow')
         side.addWidget(self.sidebar_tagline)
-        side.addSpacing(18)
+        side.addSpacing(20)
 
         self.sidebar_project_caption = QLabel(self.tr('sidebar_project_title'))
         self.sidebar_project_caption.setObjectName('sidebarEyebrow')
-        side.addWidget(self.sidebar_project_caption)
         self.sidebar_project = QFrame()
         self.sidebar_project.setObjectName('sidebarProject')
         project_card = QVBoxLayout(self.sidebar_project)
@@ -1438,23 +1392,27 @@ class Window(QMainWindow):
         self.sidebar_project_details.setWordWrap(True)
         project_card.addWidget(self.sidebar_project_name)
         project_card.addWidget(self.sidebar_project_details)
-        side.addWidget(self.sidebar_project)
-        side.addSpacing(14)
 
         self.sidebar_nav_caption = QLabel(self.tr('sidebar_workspace'))
         self.sidebar_nav_caption.setObjectName('sidebarEyebrow')
         side.addWidget(self.sidebar_nav_caption)
         self.sidebar_nav = []
         self.sidebar_nav_keys = ('sidebar_source_video', 'sidebar_source_audio', 'sidebar_your_recording')
-        for key in self.sidebar_nav_keys:
+        for key, kind in zip(self.sidebar_nav_keys, ('video', 'wave', 'mic')):
             nav = MotionButton('  ' + self.tr(key))
             nav.setMotionEnabled(self.animations_enabled)
             nav.setObjectName('sidebarNav')
+            nav.setProperty('icon_kind', kind)
+            nav.setIcon(icon(kind))
+            nav.setIconSize(QSize(21, 21))
             nav.setCursor(Qt.PointingHandCursor)
             nav.setProperty('selected', len(self.sidebar_nav) == 0)
+            nav.setMinimumHeight(45)
             side.addWidget(nav)
             self.sidebar_nav.append(nav)
         side.addStretch(1)
+        side.addWidget(self.sidebar_project_caption)
+        side.addWidget(self.sidebar_project)
         hints = QFrame()
         hints.setObjectName('sidebarHint')
         hints_layout = QVBoxLayout(hints)
@@ -1481,34 +1439,72 @@ class Window(QMainWindow):
         layout.setContentsMargins(12, 5, 10, 10)
         layout.setSpacing(14)
 
-        top = QHBoxLayout()
-        top.setSpacing(10)
-        layout.addLayout(top)
+        self.top_toolbar = QFrame()
+        self.top_toolbar.setObjectName('topToolbar')
+        top = QHBoxLayout(self.top_toolbar)
+        top.setContentsMargins(17, 14, 15, 14)
+        top.setSpacing(8)
+        layout.addWidget(self.top_toolbar)
+        title_group = QVBoxLayout()
+        title_group.setSpacing(3)
         self.workspace_title = QLabel(self.tr('workspace_title'))
         self.workspace_title.setObjectName('brandTitle')
-        top.addWidget(self.workspace_title)
-        top.addSpacing(14)
-        self.open_btn = self.button('folder', self.tr('open_project') + ' · ' + self.shortcut_text('open'), self.open_project)
+        self.project_chip = QLabel(self.tr('toolbar_empty'))
+        self.project_chip.setObjectName('projectSubtitle')
+        self.project_chip.setMinimumWidth(130)
+        title_group.addWidget(self.workspace_title)
+        title_group.addWidget(self.project_chip)
+        top.addLayout(title_group, 1)
+        self.open_btn = self.button('folder_open', self.tr('open_project'), self.open_project)
+        self.open_btn.setObjectName('toolbarButton')
+        self.open_btn.setText(self.tr('open_project'))
+        self.open_btn.setFixedHeight(44)
+        self.open_btn.setFixedWidth(134)
         top.addWidget(self.open_btn)
-        self.close_project_btn = MotionButton(self.tr('close_project'))
+        self.close_project_btn = MotionButton()
         self.close_project_btn.setMotionEnabled(self.animations_enabled)
+        self.close_project_btn.setProperty('icon_kind', 'close_project')
+        self.close_project_btn.setObjectName('toolbarIcon')
         self.close_project_btn.setIcon(icon('close_project'))
-        self.close_project_btn.setIconSize(QSize(20, 20))
-        self.close_project_btn.setToolTip(self.tr('close_project') + ' · ' + self.shortcut_text('close'))
+        self.close_project_btn.setIconSize(QSize(21, 21))
+        self.close_project_btn.setToolTip(self.tr('close_project'))
         self.close_project_btn.setAccessibleName(self.tr('close_project'))
+        self.close_project_btn.setFixedSize(44, 44)
         self.close_project_btn.clicked.connect(self.close_project)
         self.close_project_btn.setEnabled(False)
         top.addWidget(self.close_project_btn)
         self.import_btn = MotionButton(self.tr('import_video'))
         self.import_btn.setMotionEnabled(self.animations_enabled)
+        self.import_btn.setProperty('icon_kind', 'video')
+        self.import_btn.setObjectName('primaryAction')
+        self.import_btn.setIcon(icon('video'))
+        self.import_btn.setIconSize(QSize(22, 22))
+        self.import_btn.setMinimumHeight(44)
         self.import_btn.clicked.connect(self.import_video)
         top.addWidget(self.import_btn)
-        top.addStretch()
+        self.save_btn = self.button('save', self.tr('save'), self.save_project)
+        self.save_btn.setObjectName('toolbarButton')
+        self.save_btn.setText(self.tr('toolbar_save'))
+        self.save_btn.setFixedSize(95, 44)
+        self.save_btn.setIconSize(QSize(20, 20))
+        top.addWidget(self.save_btn)
+        self.export_btn = self.button('export', self.tr('export'), self.export)
+        self.export_btn.setObjectName('toolbarButton')
+        self.export_btn.setText(self.tr('export'))
+        self.export_btn.setFixedSize(110, 44)
+        self.export_btn.setIconSize(QSize(20, 20))
+        top.addWidget(self.export_btn)
         self.help_btn = self.button('help', self.tr('tutorial_button'), lambda: self.show_tutorial(True))
+        self.help_btn.setObjectName('toolbarIcon')
+        self.help_btn.setFixedSize(44, 44)
         top.addWidget(self.help_btn)
         self.theme_btn = self.button('sun', self.tr('theme'), self.toggle_theme)
+        self.theme_btn.setObjectName('toolbarIcon')
+        self.theme_btn.setFixedSize(44, 44)
         top.addWidget(self.theme_btn)
         self.options_btn = self.button('settings', self.tr('preferences'), self.preferences)
+        self.options_btn.setObjectName('toolbarIcon')
+        self.options_btn.setFixedSize(44, 44)
         top.addWidget(self.options_btn)
 
         self.page = QScrollArea()
@@ -1520,7 +1516,23 @@ class Window(QMainWindow):
         self.page.setWidget(body)
         stack = QVBoxLayout(body)
         stack.setContentsMargins(2, 8, 6, 16)
-        stack.setSpacing(13)
+        stack.setSpacing(15)
+
+        self.media_row = QHBoxLayout()
+        self.media_row.setSpacing(15)
+        stack.addLayout(self.media_row)
+        self.video_card = QFrame()
+        self.video_card.setObjectName('videoCard')
+        self.video_card_layout = QVBoxLayout(self.video_card)
+        self.video_card_layout.setContentsMargins(16, 14, 16, 14)
+        self.video_card_layout.setSpacing(8)
+        self.media_row.addWidget(self.video_card, 7)
+        self.reference_card = QFrame()
+        self.reference_card.setObjectName('referenceCard')
+        self.reference_card_layout = QVBoxLayout(self.reference_card)
+        self.reference_card_layout.setContentsMargins(18, 16, 18, 18)
+        self.reference_card_layout.setSpacing(10)
+        self.media_row.addWidget(self.reference_card, 4)
 
         self.video_box = QFrame()
         self.video_box.setObjectName('videoBox')
@@ -1547,11 +1559,13 @@ class Window(QMainWindow):
         self.player.setVideoOutput(self.video)
         viewer_stack.addWidget(self.video)
 
-        self.empty = QPushButton(self.tr('import_video'))
+        self.empty = MotionButton(self.tr('import_video'))
+        self.empty.setMotionEnabled(self.animations_enabled)
+        self.empty.setProperty('icon_kind', 'video')
         self.empty.setObjectName('emptyState')
         self.empty.setCursor(Qt.PointingHandCursor)
         # Vector icon avoids missing-glyph rectangles on systems without a fullwidth-plus font.
-        self.empty.setIcon(icon('plus', '#e93f7f'))
+        self.empty.setIcon(icon('video', '#8a6cd8'))
         self.empty.setIconSize(QSize(21, 21))
         self.empty.clicked.connect(self.import_video)
         viewer_stack.addWidget(self.empty)
@@ -1569,19 +1583,29 @@ class Window(QMainWindow):
         self.transcription_status.hide()
         video_header = QLabel(self.tr('sidebar_video_heading'))
         video_header.setObjectName('sectionHeading')
-        stack.addWidget(video_header)
+        self.video_card_layout.addWidget(video_header)
         self.video_header = video_header
-        stack.addWidget(self.video_box)
+        self.video_header.setObjectName('panelHeading')
+        self.video_card_layout.addWidget(self.video_box)
         grip = ResizeGrip()
         grip.moved.connect(self.resize_video)
-        stack.addWidget(grip)
+        self.video_card_layout.addWidget(grip)
 
         transport = QHBoxLayout()
+        transport.setSpacing(8)
         self.restart_btn = self.button('restart', self.tr('restart'), self.restart_segment)
+        self.restart_btn.setObjectName('transportButton')
+        self.restart_btn.setFixedSize(42, 42)
         transport.addWidget(self.restart_btn)
         self.play_btn = self.button('play', self.tr('play_pause'), self.toggle_play)
+        self.play_btn.setObjectName('playAction')
+        self.play_btn.setFixedSize(48, 44)
+        self.play_btn.setIconSize(QSize(25, 25))
         transport.addWidget(self.play_btn)
         self.clock = QLabel('')
+        self.clock.setObjectName('clockLabel')
+        self.clock.setMinimumWidth(114)
+        self.clock.setAlignment(Qt.AlignCenter)
         transport.addWidget(self.clock)
 
         # Compact part navigation. It stays hidden for a single whole-video workspace.
@@ -1589,7 +1613,9 @@ class Window(QMainWindow):
         part_nav_row = QHBoxLayout(self.part_nav)
         part_nav_row.setContentsMargins(8, 0, 0, 0)
         part_nav_row.setSpacing(4)
-        self.part_prev_btn = QPushButton()
+        self.part_prev_btn = MotionButton()
+        self.part_prev_btn.setMotionEnabled(self.animations_enabled)
+        self.part_prev_btn.setObjectName('panelIcon')
         self.part_prev_btn.setProperty('icon_kind', 'chevron_left')
         self.part_prev_btn.setIcon(icon('chevron_left'))
         self.part_prev_btn.setIconSize(QSize(18, 18))
@@ -1598,7 +1624,9 @@ class Window(QMainWindow):
         self.part_combo = QComboBox()
         self.part_combo.setFixedWidth(128)
         self.part_combo.currentIndexChanged.connect(self.part_changed)
-        self.part_next_btn = QPushButton()
+        self.part_next_btn = MotionButton()
+        self.part_next_btn.setMotionEnabled(self.animations_enabled)
+        self.part_next_btn.setObjectName('panelIcon')
         self.part_next_btn.setProperty('icon_kind', 'chevron_right')
         self.part_next_btn.setIcon(icon('chevron_right'))
         self.part_next_btn.setIconSize(QSize(18, 18))
@@ -1618,7 +1646,7 @@ class Window(QMainWindow):
         self.zoom.setToolTip(self.tr('zoom'))
         self.zoom.valueChanged.connect(self.zoom_changed)
         transport.addWidget(self.zoom)
-        stack.addLayout(transport)
+        self.video_card_layout.addLayout(transport)
 
         self.original = Timeline()
         self.original.setFixedHeight(self.original_timeline_height)
@@ -1641,41 +1669,42 @@ class Window(QMainWindow):
         self.original.edit.connect(self.edit_segment)
         self.original.boundaryChanged.connect(self.boundary_changed)
         self.original.setToolTip(self.tr('mark_shortcut_tip').replace('M', self.shortcut_text('mark')))
+        self.timeline_card = QFrame()
+        self.timeline_card.setObjectName('timelineCard')
+        self.timeline_layout = QVBoxLayout(self.timeline_card)
+        self.timeline_layout.setContentsMargins(17, 16, 17, 17)
+        self.timeline_layout.setSpacing(9)
+        stack.addWidget(self.timeline_card)
+        self.timeline_title = QLabel(self.tr('timeline_panel'))
+        self.timeline_title.setObjectName('panelHeading')
+        self.timeline_layout.addWidget(self.timeline_title)
         original_heading = QLabel(self.tr('sidebar_original_heading'))
         original_heading.setObjectName('sectionHeading')
         self.original_heading = original_heading
-        stack.addWidget(original_heading)
-        stack.addWidget(self.track_scroll[0])
+        self.timeline_layout.addWidget(original_heading)
+        self.timeline_layout.addWidget(self.track_scroll[0])
 
         # Chapter creation and Part editing are exposed by the timeline context menu.
 
-        # Primary project controls sit immediately above the reference field.
-        self.project_controls = QWidget()
-        foot = QHBoxLayout(self.project_controls)
-        foot.setContentsMargins(0, 4, 0, 4)
-        self.save_btn = self.button('save', self.tr('save'), self.save_project)
-        foot.addWidget(self.save_btn)
-        foot.addStretch()
-        self.record_btn = self.button('mic', self.tr('record'), self.record, circular=True)
-        self.record_btn.setObjectName('record')
-        self.record_btn.setFixedSize(58, 58)
-        self.record_btn.setIconSize(QSize(29, 29))
-        foot.addWidget(self.record_btn)
-        foot.addStretch()
-        self.export_btn = self.button('export', self.tr('export'), self.export)
-        foot.addWidget(self.export_btn)
-        stack.addWidget(self.project_controls)
-
+        # The real reference editor and microphone control live in a dedicated inspector.
+        # Existing recording, project save, transcribe, and subtitle handlers remain unchanged.
+        self.reference_heading = QLabel(self.tr('reference_panel'))
+        self.reference_heading.setObjectName('panelHeading')
+        self.reference_card_layout.addWidget(self.reference_heading)
         self.ref_tools = QWidget()
         refrow = QHBoxLayout(self.ref_tools)
         refrow.setContentsMargins(0, 0, 0, 0)
         refrow.addStretch()
-        self.ref_btn = QPushButton(self.tr('import_reference'))
+        self.ref_btn = MotionButton(self.tr('import_reference'))
+        self.ref_btn.setMotionEnabled(self.animations_enabled)
+        self.ref_btn.setObjectName('referenceAction')
+        self.ref_btn.setProperty('icon_kind', 'file_text')
+        self.ref_btn.setIcon(icon('file_text'))
+        self.ref_btn.setIconSize(QSize(18, 18))
         self.ref_btn.setToolTip(self.tr('import_reference_tip'))
         self.ref_btn.clicked.connect(self.import_reference)
         refrow.addWidget(self.ref_btn)
-        refrow.addStretch()
-        stack.addWidget(self.ref_tools)
+        self.reference_card_layout.addWidget(self.ref_tools)
 
         self.reference = AutoGrowTextEdit()
         self.reference.setObjectName('reference')
@@ -1683,17 +1712,42 @@ class Window(QMainWindow):
         self.reference.textChanged.connect(self.reference_changed)
         self.reference.replaceRequested.connect(self.import_reference)
         self.reference.autoRequested.connect(self.use_auto_reference)
-        stack.addWidget(self.reference)
+        self.reference.setMaximumHeight(205)
+        self.reference_card_layout.addWidget(self.reference)
+        self.reference_card_layout.addStretch(1)
+
+        self.project_controls = QFrame()
+        self.project_controls.setObjectName('recordCard')
+        foot = QHBoxLayout(self.project_controls)
+        foot.setContentsMargins(10, 12, 10, 12)
+        foot.setSpacing(11)
+        self.record_btn = self.button('mic', self.tr('record'), self.record, circular=True)
+        self.record_btn.setObjectName('record')
+        self.record_btn.setFixedSize(62, 62)
+        self.record_btn.setIconSize(QSize(29, 29))
+        foot.addWidget(self.record_btn)
+        record_copy = QVBoxLayout()
+        record_copy.setSpacing(5)
+        self.record_heading = QLabel(self.tr('record_panel'))
+        self.record_heading.setObjectName('panelHeading')
+        record_copy.addWidget(self.record_heading)
+        self.record_hint = QLabel(self.tr('record_hint'))
+        self.record_hint.setObjectName('recordHint')
+        self.record_hint.setWordWrap(True)
+        record_copy.addWidget(self.record_hint)
+        foot.addLayout(record_copy, 1)
+        self.reference_card_layout.addWidget(self.project_controls)
+
         dub_heading = QLabel(self.tr('sidebar_dub_heading'))
         dub_heading.setObjectName('sectionHeading')
         self.dub_heading = dub_heading
-        stack.addWidget(dub_heading)
-        stack.addWidget(self.track_scroll[1])
+        self.timeline_layout.addWidget(dub_heading)
+        self.timeline_layout.addWidget(self.track_scroll[1])
         stack.addStretch()
 
         # Sidebar jumps to the original video/timeline widgets; editing flow is unchanged.
-        for item, target in zip(self.sidebar_nav, (self.video_box, self.track_scroll[0], self.track_scroll[1])):
-            item.clicked.connect(lambda _checked=False, t=target: self.scroll_to_workspace(t))
+        for item, target in zip(self.sidebar_nav, (self.video_card, self.track_scroll[0], self.track_scroll[1])):
+            item.clicked.connect(lambda _checked=False, t=target, n=item: self.navigate_workspace(n, t))
 
         self.reference.hide()
         self.ref_tools.hide()
@@ -1735,13 +1789,27 @@ class Window(QMainWindow):
                 self.tr('sidebar_segment_count', count=len(self.project.segments))
                 + f"  ·  {int(self.project.duration // 60):02d}:{int(self.project.duration % 60):02d}"
             )
+            if hasattr(self, 'project_chip'):
+                self.project_chip.setText(Path(getattr(self.project, 'path', '')).stem if getattr(self.project, 'path', '')
+                                          else Path(self.project.video).stem if self.project.video
+                                          else self.tr('toolbar_empty'))
         else:
             self.sidebar_project_name.setText(self.tr('sidebar_no_video'))
             self.sidebar_project_details.setText(self.tr('sidebar_import_hint'))
+            if hasattr(self, 'project_chip'):
+                self.project_chip.setText(self.tr('toolbar_empty'))
 
     def apply_language(self):
         self.workspace_title.setText(self.tr('workspace_title'))
         self.sidebar_tagline.setText(self.tr('sidebar_tagline'))
+        self.save_btn.setText(self.tr('toolbar_save'))
+        self.export_btn.setText(self.tr('export'))
+        self.open_btn.setText(self.tr('open_project'))
+        self.project_chip.setText(
+            Path(getattr(self.project, 'path', '')).stem if self.project and getattr(self.project, 'path', '')
+            else Path(self.project.video).stem if self.project and self.project.video
+            else self.tr('toolbar_empty')
+        )
         self.sidebar_project_caption.setText(self.tr('sidebar_project_title'))
         self.sidebar_nav_caption.setText(self.tr('sidebar_workspace'))
         self.sidebar_guide_title.setText(self.tr('sidebar_shortcuts_title'))
@@ -1757,12 +1825,16 @@ class Window(QMainWindow):
         self.help_btn.setAccessibleName(self.tr('tutorial_button'))
         self.open_btn.setToolTip(self.tr('open_project') + ' · ' + self.shortcut_text('open'))
         self.open_btn.setAccessibleName(self.tr('open_project'))
-        self.close_project_btn.setText(self.tr('close_project'))
+        self.close_project_btn.setText('')
         self.close_project_btn.setToolTip(self.tr('close_project') + ' · ' + self.shortcut_text('close'))
         self.close_project_btn.setAccessibleName(self.tr('close_project'))
         self.import_btn.setText(self.tr('import_video'))
         self.empty.setText(self.tr('import_video') + '\nMP4 · MOV · MKV · WEBM')
         self.video_header.setText(self.tr('sidebar_video_heading'))
+        self.reference_heading.setText(self.tr('reference_panel'))
+        self.record_heading.setText(self.tr('record_panel'))
+        self.record_hint.setText(self.tr('record_hint'))
+        self.timeline_title.setText(self.tr('timeline_panel'))
         self.original_heading.setText(self.tr('sidebar_original_heading'))
         self.dub_heading.setText(self.tr('sidebar_dub_heading'))
         self.theme_btn.setToolTip(self.tr('theme'))
@@ -1782,6 +1854,31 @@ class Window(QMainWindow):
         self.reference.setProperty('replace_label', self.tr('replace_reference'))
         self.reference.setProperty('auto_label', self.tr('use_auto'))
         self.refresh_part_combo()
+        self.update_toolbar_density()
+
+    def update_toolbar_density(self):
+        """Retain every existing action on small macOS windows, using icon-only mode."""
+        compact = self.width() < 1310
+        for button, text, expanded_width in (
+            (self.open_btn, self.tr('open_project'), 143),
+            (self.save_btn, self.tr('toolbar_save'), 95),
+            (self.export_btn, self.tr('export'), 110),
+        ):
+            button.setText('' if compact else text)
+            button.setFixedWidth(44 if compact else expanded_width)
+        self.import_btn.setText('' if compact else self.tr('import_video'))
+        self.import_btn.setFixedWidth(45 if compact else 151)
+
+    def navigate_workspace(self, button, target):
+        normal = '#c5c4dc' if self.dark else '#62698b'
+        selected = '#dbc9ff' if self.dark else '#7854da'
+        for item in self.sidebar_nav:
+            active = item is button
+            item.setProperty('selected', active)
+            item.setIcon(icon(item.property('icon_kind'), selected if active else normal))
+            item.style().unpolish(item)
+            item.style().polish(item)
+        self.scroll_to_workspace(target)
 
     def scroll_to_workspace(self, target):
         """Animate only the scrollbar; do not relayout or animate video frames."""
@@ -1827,131 +1924,25 @@ class Window(QMainWindow):
         return b
 
     def theme(self):
-        """Quiet, native-feeling desktop palette: translucent controls and rounded panels."""
-        if self.dark:
-            bg, fg, surface, border = '#1f2130', '#f4f2ff', '#2a2b3e', '#43445b'
-            hover, muted, selection = '#34334c', '#c5c2db', '#413a62'
-            raised, hint, accent = '#303147', '#aaa5bf', '#c2a5ff'
-            pink, sidebar, lavender = '#bda3f8', '#252639', '#35314c'
-        else:
-            bg, fg, surface, border = '#f6f7fc', '#26304a', '#ffffff', '#e5e6f0'
-            hover, muted, selection = '#f3efff', '#6d7690', '#eee7ff'
-            raised, hint, accent = '#faf9fe', '#9299ae', '#8664c4'
-            pink, sidebar, lavender = '#aa8ae9', '#fdfcff', '#f2edff'
-        QApplication.instance().setStyleSheet(f"""
-        QWidget {{ color: {fg}; font-family: 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', sans-serif; font-size: 13px; }}
-        QMainWindow, QWidget#centralCanvas, QWidget#canvasBody, QScrollArea {{ background-color: {bg}; }}
-        QScrollArea {{ border: none; }}
-        QScrollArea > QWidget > QWidget {{ border: none; }}
-        QLabel#brandTitle {{ font-weight: 700; font-size: 19px; letter-spacing: -0.4px; color: {fg}; }}
-        QLabel#sectionHeading {{ color: {hint}; font-size: 11px; font-weight: 700; letter-spacing: 1px;
-                                 padding-top: 7px; padding-left: 9px; padding-bottom: 1px; }}
-        QPushButton {{ background-color: {surface}; color: {fg}; border: 1px solid {border};
-                      border-radius: 12px; padding: 8px 14px; min-height: 22px; }}
-        QPushButton:hover {{ background-color: {hover}; border-color: {muted}; }}
-        QPushButton:pressed {{ background-color: {selection}; }}
-        QPushButton:focus {{ border: 1px solid {accent}; }}
-        QPushButton:disabled {{ color: {muted}; border-color: {border}; }}
-        QPushButton#primaryButton {{ color: #ffffff; background-color: #6263d6; border: 1px solid #6263d6; }}
-        QPushButton#primaryButton:hover {{ background-color: #5154c5; }}
-        QPushButton#emptyState {{ background-color: {raised}; border: 2px dashed {border};
-                                 border-radius: 22px; color: {hint}; font-size: 16px; font-weight: 600; }}
-        QPushButton#emptyState:hover {{ color: {accent}; border-color: {accent}; background: {selection}; }}
-        QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDoubleSpinBox, QKeySequenceEdit {{
-            background-color: {surface}; color: {fg}; border: 1px solid {border};
-            border-radius: 11px; padding: 9px 12px; selection-background-color: {selection}; min-height: 22px; }}
-        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QDoubleSpinBox:focus,
-        QKeySequenceEdit:focus {{ border: 1px solid {accent}; }}
-        QComboBox::drop-down {{ border: none; width: 26px; }}
-        QGroupBox {{ border: 1px solid {border}; border-radius: 15px; margin-top: 16px;
-                     padding: 16px 12px 12px 12px; background: {surface}; font-weight: 600; }}
-        QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left;
-                            left: 14px; padding: 0 8px; background: {surface}; }}
-        QDialog {{ background-color: {bg}; }}
-        QDialog#modernDialog {{ background-color: transparent; }}
-        QFrame#dialogSurface {{ background-color: {surface}; border: 1px solid {border}; border-radius: 23px; }}
-        QFrame#dialogHeader {{ background: transparent; border: none; }}
-        QLabel#dialogTitle {{ font-size: 17px; font-weight: 700; }}
-        QPushButton#dialogClose {{ background-color: {raised}; color: {hint}; border: none;
-                                   font-size: 19px; border-radius: 15px; padding: 0; }}
-        QPushButton#dialogClose:hover {{ background-color: {selection}; color: {fg}; }}
-        QWidget#dialogBody {{ background-color: transparent; }}
-        QFrame#videoBox {{ background-color: {surface}; border: 1px solid {border}; border-radius: 22px; }}
-        QFrame#videoViewer {{ background: #08090c; border: none; border-radius: 20px; }}
-        QLabel#transcriptionStatus {{ background: rgba(22,25,31,210); color: white;
-            border: 1px solid rgba(255,255,255,30); border-radius: 12px; padding: 10px 14px; }}
-        QPushButton#record {{ background: #d34d6d; color: white; border: none; border-radius: 29px; }}
-        QPushButton#record:hover {{ background: #b83a5c; }}
-        QScrollBar:horizontal {{ height: 8px; background: transparent; }}
-        QScrollBar:vertical {{ width: 8px; background: transparent; }}
-        QScrollBar::handle {{ background: {muted}; border-radius: 4px; min-width: 24px; min-height: 24px; }}
-        QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
-        QSlider::groove:horizontal {{ height: 5px; background: {border}; border-radius: 3px; }}
-        QSlider::handle:horizontal {{ width: 15px; margin: -5px 0; background: {accent}; border-radius: 7px; }}
-        QToolTip {{ background: {surface}; color: {fg}; border: 1px solid {border}; border-radius: 8px; padding: 7px; }}
-        QMenu {{ background: {surface}; border: 1px solid {border}; border-radius: 13px; padding: 8px; }}
-        QMenu::item {{ padding: 9px 22px; border-radius: 7px; }}
-        QMenu::item:selected {{ background: {selection}; color: {accent}; }}
-        /* Visual refresh: selectors leave all handlers, workflows and keyboard routing untouched. */
-        QMainWindow, QWidget#centralCanvas {{ background: {bg}; }}
-        QWidget#workspaceCanvas {{ background: transparent; }}
-        QFrame#workspaceSidebar {{ background-color: {sidebar}; border: 1px solid {border}; border-radius: 24px; }}
-        QLabel#brandLogo {{ background: transparent; border: 0; }}
-        QLabel#sidebarBrand {{ font-size: 19px; font-weight: 750; color: {fg}; }}
-        QLabel#sidebarEyebrow {{ font-size: 10px; color: {hint}; font-weight: 700; letter-spacing: 1px; }}
-        QFrame#sidebarProject {{ background-color: {raised}; border: 1px solid {border}; border-radius: 15px; }}
-        QLabel#sidebarProjectName {{ font-size: 13px; font-weight: 700; color: {fg}; background: transparent; }}
-        QLabel#sidebarProjectDetails {{ font-size: 11px; color: {muted}; background: transparent; }}
-        QFrame#sidebarHint {{ background-color: {lavender}; border: 1px solid {border}; border-radius: 16px; }}
-        QPushButton#sidebarNav {{ background: transparent; border: 1px solid transparent; color: {muted}; font-weight: 600;
-            font-size: 12px; border-radius: 11px; padding: 11px 10px; text-align: left; min-height: 20px; }}
-        QPushButton#sidebarNav:hover {{ background-color: {hover}; color: {fg}; }}
-        QPushButton#sidebarNav[selected='true'] {{ background-color: {selection}; color: {accent}; }}
-        QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
-        QLabel#brandTitle {{ font-weight: 750; font-size: 21px; color: {fg}; }}
-        QLabel#sectionHeading {{ color: {hint}; font-size: 11px; font-weight: 700; padding: 5px 0 2px 12px; }}
-        QLabel#modelInfo {{ color: {muted}; font-size: 12px; }}
-        QPushButton {{ background-color: {surface}; color: {fg}; border: 1px solid {border};
-            border-radius: 12px; padding: 10px 15px; min-height: 22px; }}
-        QPushButton:hover {{ background-color: {hover}; border-color: {accent}; }}
-        QPushButton:pressed {{ background-color: {selection}; }}
-        QPushButton:disabled {{ color: {hint}; background-color: {raised}; border-color: {border}; }}
-        QPushButton#primaryButton {{ color: #29223a; background: {pink}; border: 1px solid {pink}; font-weight: 700; }}
-        QPushButton#primaryButton:hover {{ background: {accent}; }}
-        QPushButton#record {{ background: transparent; color: #ffffff; border: 0px; padding: 0px; min-height: 0px; }}
-        QPushButton#record:hover {{ background: transparent; }}
-        QPushButton#record:disabled {{ background: transparent; }}
-        QPushButton#emptyState {{ background: {raised}; border: 1.5px dashed {border}; border-radius: 20px;
-            color: {muted}; font-size: 16px; font-weight: 650; }}
-        QPushButton#emptyState:hover {{ color: {accent}; border-color: {accent}; background: {selection}; }}
-        QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDoubleSpinBox, QKeySequenceEdit {{
-            background: {raised}; color: {fg}; border: 1px solid {border}; border-radius: 11px; padding: 10px 12px; }}
-        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QDoubleSpinBox:focus,
-        QKeySequenceEdit:focus {{ background: {surface}; border: 1px solid {accent}; }}
-        QGroupBox {{ border: 1px solid {border}; border-radius: 16px; margin-top: 17px;
-            padding: 18px 14px 12px 14px; background: {surface}; font-weight: 650; }}
-        QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 16px;
-            padding: 0 8px; background: {surface}; }}
-        QFrame#dialogSurface {{ background-color: {surface}; border: 1px solid {border}; border-radius: 24px; }}
-        QLabel#dialogTitle {{ font-size: 17px; font-weight: 750; }}
-        QLabel#trafficRed {{ background: #ff605c; border: 1px solid #ed4b49; border-radius: 5px; }}
-        QLabel#trafficYellow {{ background: #ffbd44; border: 1px solid #e9a82b; border-radius: 5px; }}
-        QLabel#trafficGreen {{ background: #00ca4e; border: 1px solid #00ad42; border-radius: 5px; }}
-        QPushButton#dialogClose {{ background: {raised}; color: {muted}; border: none; border-radius: 15px; }}
-        QPushButton#dialogClose:hover {{ background: {selection}; color: {fg}; }}
-        QFrame#videoBox {{ background: {surface}; border: 1px solid {border}; border-radius: 22px; }}
-        QSlider::groove:horizontal {{ height: 5px; background: {border}; border-radius: 3px; }}
-        QSlider::handle:horizontal {{ width: 16px; margin: -6px 0; background: {pink}; border-radius: 8px; }}
-        QMenu::item {{ padding: 9px 22px; border-radius: 9px; }}
-        QDialogButtonBox QPushButton {{ padding-left: 20px; padding-right: 20px; }}
-        """)
+        """Apply one coordinated desktop visual system without changing app behavior."""
+        QApplication.instance().setStyleSheet(stylesheet(self.dark))
         self.record_btn.setProperty('record_dark', self.dark)
         self.record_btn.update()
+        primary = '#ffffff' if self.dark else '#ffffff'
+        normal = '#c5c4dc' if self.dark else '#62698b'
+        active = '#dbc9ff' if self.dark else '#7854da'
         for button in self.findChildren(QPushButton):
             kind = button.property('icon_kind')
             if kind:
-                color = '#ffffff' if button is self.record_btn else muted
+                if button is self.record_btn or button is self.play_btn:
+                    color = primary
+                elif button.property('selected'):
+                    color = active
+                else:
+                    color = normal
                 button.setIcon(icon(kind, color))
+        self.theme_btn.setProperty('icon_kind', 'sun' if self.dark else 'moon')
+        self.theme_btn.setIcon(icon(self.theme_btn.property('icon_kind'), normal))
         for track in (self.original, self.dub):
             track.dark = self.dark
             track.update()
@@ -2045,8 +2036,8 @@ class Window(QMainWindow):
         QTimer.singleShot(0, self.update_video_shape)
 
     def fit_video_size(self):
-        width = max(1, self.video_box.width())
-        height = max(1, self.video_box.height())
+        width = max(1, self.video_box.contentsRect().width() - 38)
+        height = max(1, self.video_box.contentsRect().height() - 24)
         ratio = self.video_ratio if self.video_ratio > 0 else 16 / 9
         fitted_w = width
         fitted_h = int(round(fitted_w / ratio))
@@ -2062,14 +2053,8 @@ class Window(QMainWindow):
         self.video_viewer.setFixedSize(fitted_w, fitted_h)
         self.empty.setFixedSize(fitted_w, fitted_h)
         self.video.setFixedSize(fitted_w, fitted_h)
-        radius = 20
-        path = QPainterPath()
-        path.addRoundedRect(QRectF(0, 0, fitted_w, fitted_h), radius, radius)
-        polygon = path.toFillPolygon().toPolygon()
-        region = QRegion(polygon)
-        self.video_viewer.setMask(region)
-        self.video.setMask(region)
-        self.empty.setMask(region)
+        # Qt stylesheet rounding keeps the placeholder smooth without generating
+        # a polygon mask every resize (which can produce dotted artifacts on macOS).
         if self.transcription_status.isVisible():
             size = self.transcription_status.sizeHint()
             size.setWidth(min(max(size.width(), 220), max(220, self.video_box.width() - 40)))
@@ -2081,6 +2066,7 @@ class Window(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, 'zoom'):
+            self.update_toolbar_density()
             self.zoom_changed()
             QTimer.singleShot(0, self.update_video_shape)
 
@@ -2165,12 +2151,13 @@ class Window(QMainWindow):
         self.restart_btn.setEnabled(has_chapters and not rec and not busy)
         self.play_btn.setEnabled(has_project and not rec and not busy)
         self.zoom.setEnabled(has_project and not rec)
-        self.record_btn.setEnabled(has_chapters and not rec and not busy)
+        self.record_btn.setEnabled(has_chapters and not busy)
         self.close_project_btn.setEnabled(has_project and not busy and not rec)
         for b in (self.open_btn, self.import_btn, self.empty):
             b.setEnabled(not busy and not rec and not transcribing)
         self.options_btn.setEnabled(not busy and not rec)
         self.part_combo.setEnabled(has_project and not busy and not rec)
+        self.project_controls.setVisible(has_project)
         self.reference.setReadOnly(rec or busy)
         for t in (self.original, self.dub):
             t.setEnabled(not rec and not busy)
@@ -2473,6 +2460,7 @@ class Window(QMainWindow):
         self.reference.setVisible(has_chapters)
         self.track_scroll[1].setVisible(has_chapters)
         self.project_controls.setVisible(has_project)
+        QTimer.singleShot(0, self.update_video_shape)
         if not has_chapters:
             self.ref_tools.hide()
         self.refresh_part_combo()

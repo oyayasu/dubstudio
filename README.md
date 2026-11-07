@@ -1,6 +1,19 @@
-# DubStudio v1.4.0
+# DubStudio v1.5.0
 
 Free desktop dubbing editor for macOS and Windows. Built from the DubStudio v1.0.1 editable source (Oct 23, 2026).
+
+## v1.5 — Complete desktop interface redesign
+
+This update replaces the actual Qt Widgets workspace layout, not only its colors:
+
+- A consistent vector icon family rendered at Retina resolution (\`dubstudio/design.py\`) for the toolbar, navigation, transport and inspector.
+- Working desktop toolbar for Open, Close, Import, Save, Export, Help, Appearance and Preferences; actions switch to icon-only mode on narrower windows.
+- New two-column player and reference/recording inspector, and a separate full-width timeline editing panel.
+- Sidebar navigation with icons and active-state feedback, with the project summary at the bottom.
+- Unified light and dark component styles for every major widget, including dialogs, input controls, menus, and scrollbar details. Removed decorative fake macOS window controls.
+- Optional motion preference remains available; existing editing commands, shortcuts, media pipeline, project files and translations are preserved.
+
+The three platforms continue using the Python/PySide6 + native media processing stack. No speculative full-language rewrite was attempted.
 
 ## v1.4 — Pastel macOS-inspired interface
 

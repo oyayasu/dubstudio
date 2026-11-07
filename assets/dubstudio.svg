@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffaff"/><stop offset=".54" stop-color="#e7dfff"/><stop offset="1" stop-color="#c7e4ff"/>
+    </linearGradient>
+    <radialGradient id="lav" cx=".18" cy=".92" r=".80">
+      <stop offset="0" stop-color="#d2a9ff" stop-opacity=".78"/><stop offset="1" stop-color="#d2a9ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blue" cx=".88" cy=".88" r=".64">
+      <stop offset="0" stop-color="#a6d4ff" stop-opacity=".68"/><stop offset="1" stop-color="#a6d4ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d1a9ff"/><stop offset=".62" stop-color="#ad73fc"/><stop offset="1" stop-color="#9971ed"/>
+    </linearGradient>
+    <linearGradient id="waveBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#add6ff"/><stop offset="1" stop-color="#88afff"/>
+    </linearGradient>
+    <linearGradient id="mic" x1=".15" y1="0" x2=".85" y2="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#f9f7ff"/><stop offset="1" stop-color="#dcd0ff"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="1022" height="1022" rx="260" fill="url(#base)"/>
+  <rect x="1" y="1" width="1022" height="1022" rx="260" fill="url(#lav)"/>
+  <rect x="1" y="1" width="1022" height="1022" rx="260" fill="url(#blue)"/>
+  <g opacity=".10" fill="#64549d" transform="translate(0 9)">
+    <rect x="78" y="461" width="38" height="70" rx="19"/>
+    <rect x="140" y="431" width="40" height="134" rx="20"/>
+    <rect x="202" y="387" width="40" height="222" rx="20"/>
+    <rect x="264" y="324" width="42" height="342" rx="21"/>
+    <rect x="718" y="324" width="42" height="342" rx="21"/>
+    <rect x="782" y="387" width="40" height="222" rx="20"/>
+    <rect x="844" y="431" width="40" height="134" rx="20"/>
+    <rect x="908" y="461" width="38" height="70" rx="19"/>
+  </g>
+  <rect x="78" y="461" width="38" height="70" rx="19" fill="url(#waveBlue)"/>
+  <rect x="140" y="431" width="40" height="134" rx="20" fill="url(#waveBlue)"/>
+  <rect x="202" y="387" width="40" height="222" rx="20" fill="url(#wave)"/>
+  <rect x="264" y="324" width="42" height="342" rx="21" fill="url(#wave)"/>
+  <rect x="718" y="324" width="42" height="342" rx="21" fill="url(#wave)"/>
+  <rect x="782" y="387" width="40" height="222" rx="20" fill="url(#wave)"/>
+  <rect x="844" y="431" width="40" height="134" rx="20" fill="url(#waveBlue)"/>
+  <rect x="908" y="461" width="38" height="70" rx="19" fill="url(#waveBlue)"/>
+  <g transform="translate(0 11)" opacity=".11" stroke="#7761ba" stroke-width="38" stroke-linecap="round" fill="none">
+    <path d="M343 462v67a169 169 0 0 0 338 0v-67"/>
+    <path d="M512 698v101M413 805h198"/>
+  </g>
+  <rect x="400" y="218" width="224" height="408" rx="112" fill="#a596dc" opacity=".13" transform="translate(0 10)"/>
+  <rect x="400" y="218" width="224" height="408" rx="112" fill="url(#mic)"/>
+  <path d="M343 462v67a169 169 0 0 0 338 0v-67" fill="none" stroke="#ffffff" stroke-width="38" stroke-linecap="round"/>
+  <path d="M512 698v101M413 805h198" fill="none" stroke="#ffffff" stroke-width="38" stroke-linecap="round"/>
+  <rect x="1.5" y="1.5" width="1021" height="1021" rx="260" fill="none" stroke="#d9cbf9" stroke-width="3" opacity=".65"/>
+</svg>
